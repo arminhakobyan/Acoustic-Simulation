@@ -6,7 +6,8 @@ from yaml import FullLoader, SafeDumper
 from Sim_room_classes import *
 
 
-
+#parser = Parser_from_yaml_to_py('Initial_configs.yaml')
+#configs = parser.parse_configs()
 with open('test.yaml') as f:
     configs = yaml.load(f, Loader=FullLoader)
 
@@ -82,3 +83,8 @@ sim_room.add_source(source2)
 mic = microphone(pos_x=4090, pos_y=10, pos_z=10, muted=0)
 sim_room.add_microphone(mic)
 """""
+
+
+
+
+

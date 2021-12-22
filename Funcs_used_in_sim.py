@@ -17,13 +17,15 @@ def twoDaudio_to_1Daudio(twod):
 
     return oned
 
-
 def resamplingAudio(audio, fs, newfs):
     # taking the nearest integre duration of the signal
     n = math.ceil(len(audio) / fs)
     # Counting the number of added points to the initial signal
     add_to_len = n * fs - len(audio)
-    if add_to_len != 0 :
+    print(add_to_len)
+    print(len(audio))
+
+    if add_to_len != 0:
         # Adding additional points
         audio += [0]*add_to_len
 
@@ -32,7 +34,6 @@ def resamplingAudio(audio, fs, newfs):
 
     new_audio = scipy.signal.resample(audio, new_audio_samples)
     return new_audio
-
 
 # make both of audios to the same - the shortest size of audio1 and audio2
 def make_same_sizes(audio1, audio2):
@@ -46,7 +47,6 @@ def make_same_sizes(audio1, audio2):
         for i in range(len(audio1)):
             audio[i] = audio1[i]
         return(audio, audio2)
-
 
 # adding t1 time from the start and t2 to the end of the audio signal
 def add_time_delay(t1, t2, audio, fs):
@@ -76,14 +76,13 @@ def time_trim(audio, fs, t_start, t_end):
 
     return new_audio
 
-
-def generateSinusoide(amplitude, fs, frequency, time = 5, phase = 0):
-    # whole time is T
-    T = 1/fs
-    # count of samples - N
-    N = fs*time
+def generateSinusoide(amplitude=0, fs=0, frequency=0, time = 5, phase = 0):
+    # whole time is t
+    t = 1/fs
+    # count of samples - n
+    n = fs*time
     omega = 2*np.pi*frequency
     # time sequency - t_seq
-    t_seq = np.arange(N) * T
+    t_seq = np.arange(n) * t
     y = amplitude * np.sin(omega * t_seq + phase)  # array-like
     return (t_seq, y)

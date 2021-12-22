@@ -85,8 +85,6 @@ class simulation_room:
         self.max_order = max_order
         self.air_absorption = air_absorption
         self.ray_tracing = ray_tracing
-        self.temperature = temperature
-        self.humadity = humadity
 
         self.material_values = ['hard_surface', 'brickwork', 'rough_concrete', 'ceramic_tiles', 'concrete_floor',
                                 'plasterboard', 'glass_window', 'wood_1.6cm', 'audience_floor', 'stage_floor',
@@ -101,8 +99,8 @@ class simulation_room:
             north=("anechoic", 0.15),
             south=("anechoic", 0.15),
         )
-        self.walls = self.material_values[walls]
-        self.floor = self.material_values[floor]
+        self.walls = self.material_values[20]
+        self.floor = self.material_values[1]
 
         self.room = pra.ShoeBox(self.room_dim, fs=self.fs, max_order=self.max_order, materials=self.mat,
                                 air_absorption=self.air_absorption, ray_tracing=self.ray_tracing)
@@ -245,3 +243,7 @@ class Parser_from_yaml_to_py:
         with open(self.config_filename) as f:
             return yaml.load(f, Loader=yaml.FullLoader)
 """""
+
+
+
+

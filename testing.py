@@ -1,10 +1,6 @@
 import sys
-import re
-import yaml
-from yaml.loader import SafeLoader
 from PyQt5.QtCore import QSize, Qt
 from PyQt5.QtGui import QPixmap
-from Sim_room_classes import *
 from PyQt5.QtWidgets import (
     QApplication,
     QMainWindow,
@@ -39,19 +35,43 @@ class MainWindow(QMainWindow):
         self.room_window = RoomWindow()
         self.sim_parameters_window = SimulationParametersWindow()
 
+        room_pic = QLabel()
+        souunsin_pic = QLabel()
+        micsin_pic = QLabel()
+
+        self.frame_sources = QGroupBox(self)
+        self.frame_sources.setTitle("Sources")
+        self.frame_sources.setMaximumWidth(600)
+        self.frame_sources.setMaximumHeight(250)
+
+
+        self.frame_mics = QGroupBox(self)
+        self.frame_mics.setTitle("Microphones")
+        self.frame_mics.setMaximumWidth(600)
+        self.frame_mics.setMaximumHeight(250)
+
+        self.frame_player = QGroupBox(self)
+        self.frame_player.setTitle("Player")
+        self.frame_player.setMaximumWidth(600)
+        self.frame_player.setMaximumHeight(250)
+
+        room_pic.setPixmap(QPixmap('room_graphics.jpg'))
+        souunsin_pic.setPixmap(QPixmap('sound_sin.jpg'))
+        micsin_pic.setPixmap(QPixmap('mic_sin.jpg'))
+
         layout = QHBoxLayout()
         layout_mic_sources_player = QVBoxLayout()
         layout_room_sins = QVBoxLayout()
 
-        layout_mic_sources_player.addWidget(QLabel('Sources info'))
-        layout_mic_sources_player.addWidget(QLabel('Microphones info'))
-        layout_mic_sources_player.addWidget(QLabel('Player'))
+        layout_mic_sources_player.addWidget(self.frame_sources)
+        layout_mic_sources_player.addWidget(self.frame_mics)
 
+        layout_mic_sources_player.addWidget(self.frame_player)
         layout.addLayout(layout_mic_sources_player)
 
-        layout_room_sins.addWidget(QLabel('Room graphic'))
-        layout_room_sins.addWidget(QLabel('Source sinusoide'))
-        layout_room_sins.addWidget(QLabel('Mic sinusoide'))
+        layout_room_sins.addWidget(room_pic)
+        layout_room_sins.addWidget(souunsin_pic)
+        layout_room_sins.addWidget(micsin_pic)
         layout.addLayout(layout_room_sins)
 
         widget = QWidget()
@@ -169,12 +189,13 @@ class SourceWindow(QWidget):
     def __init__(self):
         super(SourceWindow, self).__init__()
         self.setWindowTitle("Sources")
-        self.setGeometry(150, 80, 450, 420)
+        self.setGeometry(150, 80, 500, 450)
 
         layout = QVBoxLayout()
         layout1 = QGridLayout()    # select source,  mute/remove, functional/wav file
         layout2 = QGridLayout()    # parameters
         layout4 = QHBoxLayout()    # apply/cancel/ok buttons
+
 
         # layout1
         self.sources = QComboBox()
@@ -186,11 +207,9 @@ class SourceWindow(QWidget):
         self.sources.setInsertPolicy(QComboBox.InsertBeforeCurrent)
 
         self.func_radiobtn = QRadioButton("Functional")
-        self.func_radiobtn.toggled.connect(self.change_to_functional)
-        #self.func_radiobtn.setChecked(True)    initial value
+        self.func_radiobtn.setChecked(True)
         self.file_radiobtn = QRadioButton("Wav file")
-        #self.file_radiobtn.setChecked(False)      initial value
-        self.file_radiobtn.toggled.connect(self.change_to_wav_file)
+        self.file_radiobtn.setChecked(False)
 
         self.mute_box = QCheckBox("Mute")
         self.mute_box.setCheckable(True)
@@ -199,6 +218,7 @@ class SourceWindow(QWidget):
         self.rmmove_box.setCheckable(True)
         self.rmmove_box.stateChanged.connect(self.show_state)
 
+        self.position_label = QLabel("Position")
         self.x_pos_line_edit = QLineEdit()
         self.x_pos_line_edit.setPlaceholderText("X coordinate")
         self.y_pos_line_edit = QLineEdit()
@@ -211,37 +231,33 @@ class SourceWindow(QWidget):
         layout1.addWidget(self.rmmove_box, 0, 3)
         layout1.addWidget(self.func_radiobtn, 1, 0)
         layout1.addWidget(self.file_radiobtn, 1, 1)
-        layout1.addWidget(QLabel("Position"), 2, 0)
+        layout1.addWidget(self.position_label, 2, 0)
         layout1.addWidget(self.x_pos_line_edit, 2, 1)
         layout1.addWidget(self.y_pos_line_edit, 2, 2)
         layout1.addWidget(self.z_pos_line_edit, 2, 3)
         layout.addLayout(layout1)
 
+        self.amplitude_label = QLabel("Amplitde")
         self.amp_line_edit = QLineEdit()
+        self.frequency_label = QLabel("Frequency")
         self.freq_line_edit = QLineEdit()
+        self.fs_label = QLabel("Sampling freqyuency")
         self.fs_line_edit = QLineEdit()
+        self.phase_label = QLabel("Phase")
         self.phase_line_edit = QLineEdit()
+        self.time_label = QLabel("Time")
         self.time_line_edit = QLineEdit()
 
-        self.amp_label = QLabel("Amplitde")
-        self.freq_label = QLabel("Frequency")
-        self.fs_label = QLabel("Sampling freqyuency")
-        self.phase_label = QLabel("Phase")
-        self.t_label = QLabel("Time")
-
-        layout2.addWidget(self.amp_label, 0, 0)
+        layout2.addWidget(self.amplitude_label, 0, 0)
         layout2.addWidget(self.amp_line_edit, 0, 1)
-        layout2.addWidget(self.freq_label, 1, 0)
+        layout2.addWidget(self.frequency_label, 1, 0)
         layout2.addWidget(self.freq_line_edit, 1, 1)
         layout2.addWidget(self.fs_label, 2, 0)
         layout2.addWidget(self.fs_line_edit, 2, 1)
         layout2.addWidget(self.phase_label, 0, 2)
         layout2.addWidget(self.phase_line_edit, 0, 3)
-        layout2.addWidget(self.t_label, 1, 2)
+        layout2.addWidget(self.time_label, 1, 2)
         layout2.addWidget(self.time_line_edit, 1, 3)
-
-        self.func_widgets = [self.amp_label, self.amp_line_edit, self.freq_label, self.freq_line_edit, self.fs_label,
-                       self.fs_line_edit, self.phase_label, self.phase_line_edit, self.t_label, self.time_line_edit]
 
         layout.addLayout(layout2)
 
@@ -260,30 +276,15 @@ class SourceWindow(QWidget):
         layout.addLayout(layout4)
         self.setLayout(layout)
 
-        self.entries = []
-        self.entries_func = [self.amp_line_edit, self.fs_line_edit, self.freq_line_edit, self.phase_line_edit,
-                         self.time_line_edit, self.x_pos_line_edit, self.y_pos_line_edit, self.z_pos_line_edit]
-        self.entries_wavfile = [None] * 9
-
-        self.entries.append(self.entries_func)
-        self.entries.append(self.entries_wavfile)
-
     def source_index_changed(self, index):
         print("Source", index)
 
     def sources_text_changed(self, text):
         print(text)
 
-    def change_to_functional(self, state):
-        print(state == Qt.Checked)
-
-    def change_to_wav_file(self, state):
-        for i in range(len(self.func_widgets)):
-            self.func_widgets[i].hide()
-
     def show_state(self, state):
         print(state == Qt.Checked)
-
+        print(state)
 
 
 class MicrophoneWindow(QWidget):
@@ -373,56 +374,61 @@ class RoomWindow(QWidget):
     def __init__(self):
         super(RoomWindow, self).__init__()
         self.setWindowTitle("Room")
-        self.setGeometry(150, 80, 350, 400)
-
-        with open('Initial_configs.yaml') as f:
-            self.data = yaml.load(f, Loader=FullLoader)
-        self.room_configs = self.data['Room']
+        self.setGeometry(150, 80, 350, 500)
 
         layout = QVBoxLayout()
         layout1 = QGridLayout()
         layout2 = QHBoxLayout()
 
+        self.sizes_label = QLabel("Sizes")
+
         self.length_lineedit = QLineEdit()
+        self.length_lineedit.setPlaceholderText("Length")
         self.width_lineedit = QLineEdit()
+        self.width_lineedit.setPlaceholderText("Width")
         self.height_lineedit = QLineEdit()
-        self.temp_lineedit = QLineEdit()
-        self.humadity_lineedit = QLineEdit()
+        self.height_lineedit.setPlaceholderText("Height")
 
-        layout1.addWidget(QLabel("Sizes"), 0, 0)
-        layout1.addWidget(QLabel("Length"), 1, 0)
-        layout1.addWidget(QLabel("Width"), 2, 0)
-        layout1.addWidget(QLabel("Height"), 3, 0)
-        layout1.addWidget(QLabel("Environment"), 4, 0)
-        layout1.addWidget(QLabel("Temperature"), 5, 0)
-        layout1.addWidget(QLabel("Humadity"), 6, 0)
-
+        layout1.addWidget(self.sizes_label, 0, 0)
         layout1.addWidget(self.length_lineedit, 1, 1)
         layout1.addWidget(self.width_lineedit, 2, 1)
         layout1.addWidget(self.height_lineedit, 3, 1)
+
+        self.environment_label = QLabel("Environment")
+        self.temp_lineedit = QLineEdit()
+        self.temp_lineedit.setPlaceholderText("Temperature")
+        self.humadity_lineedit = QLineEdit()
+        self.humadity_lineedit.setPlaceholderText("Humadity")
+
+        layout1.addWidget(self.environment_label, 4, 0)
         layout1.addWidget(self.temp_lineedit, 5, 1)
         layout1.addWidget(self.humadity_lineedit, 6, 1)
 
+        self.surface_label = QLabel("Surface materials")
+        self.walls_label = QLabel("Walls")
         self.walls = QComboBox()
         self.walls.setEditable(False)
+        self.walls.addItems(["anechoic", "hard surface", "brickwork"])
+        self.walls.currentTextChanged.connect(self.wall_material_changed)
 
+        self.floor_label = QLabel("Floor")
         self.floor = QComboBox()
         self.floor.setEditable(False)
+        self.floor.addItems(["brickwork", "stage floor"])
+        self.floor.currentTextChanged.connect(self.floor_material_changed)
 
-        layout1.addWidget(QLabel("Surface materials"), 7, 0)
-        layout1.addWidget(QLabel("Walls"), 8, 0)
+        layout1.addWidget(self.surface_label, 7, 0)
+        layout1.addWidget(self.walls_label, 8, 0)
         layout1.addWidget(self.walls, 8, 1)
 
-        layout1.addWidget(QLabel("Floor"), 9, 0)
+        layout1.addWidget(self.floor_label, 9, 0)
         layout1.addWidget(self.floor, 9, 1)
 
         self.btn_ok = QPushButton("OK")
         self.btn_ok.setStyleSheet("color: white;")
         self.btn_ok.setStyleSheet("Background-color: grey;")
-
         self.btn_apply = QPushButton("Apply")
         self.btn_apply.setStyleSheet("Background-color: grey;")
-
         self.btn_cancel = QPushButton("Cancel")
         self.btn_cancel.setStyleSheet("Background-color: grey;")
 
@@ -430,126 +436,64 @@ class RoomWindow(QWidget):
         layout2.addWidget(self.btn_cancel)
         layout2.addWidget(self.btn_ok)
 
+
         layout.addLayout(layout1)
         layout.addLayout(layout2)
         self.setLayout(layout)
 
-        self.fill_entries()
 
-        self.length_lineedit.textChanged.connect(self.change_length)
-        self.width_lineedit.textChanged.connect(self.change_width)
-        self.height_lineedit.textChanged.connect(self.change_height)
-        self.temp_lineedit.textChanged.connect(self.change_temperature)
-        self.humadity_lineedit.textChanged.connect(self.change_humadity)
-        self.walls.currentTextChanged.connect(self.wall_material_changed)
-        self.floor.currentTextChanged.connect(self.floor_material_changed)
-        self.btn_ok.clicked.connect(self.load_parameters_to_data_and_destroy)
-        self.btn_apply.clicked.connect(self.load_parameters_to_data)
-        self.btn_cancel.clicked.connect(self.hide)
+    def wall_material_changed(self, material):
+        print(material)
 
-
-    def fill_entries(self):
-        self.walls.addItems(self.data['Material values'])
-        self.floor.addItems(self.data['Material values'])
-
-        self.walls.setCurrentIndex(self.room_configs['walls'])
-        self.floor.setCurrentIndex(self.room_configs['floor'])
-        self.length_lineedit.setText(str(self.room_configs['length']))
-        self.width_lineedit.setText(str(self.room_configs['width']))
-        self.height_lineedit.setText(str(self.room_configs['height']))
-        self.temp_lineedit.setText(str(self.room_configs['temperature']))
-        self.humadity_lineedit.setText(str(self.room_configs['humadity']))
-
-    def change_length(self, text):
-        if self.regexp.search(text):
-            text = unicode(text)
-            # do replacements before and after cursor pos
-            pos = self.edit.cursorPosition()
-            prefix = self.regexp.sub(' ', text[:pos])
-            suffix = self.regexp.sub(' ', text[pos:])
-            # cursor might be between spaces
-            if prefix.endswith(' ') and suffix.startswith(' '):
-                suffix = suffix[1:]
-            self.edit.setText(prefix + suffix)
-            self.edit.setCursorPosition(len(prefix))
-
-    def change_width(self, w):
-        self.room_configs['width'] = int(w)
-
-    def change_height(self, h):
-        self.room_configs['height'] = int(h)
-
-    def change_temperature(self, t):
-        self.room_configs['temperature'] = int(t)
-
-    def change_humadity(self, h):
-        self.room_configs['humadity'] = int(h)
-
-    def wall_material_changed(self, material_ind):
-        self.walls.setCurrentIndex(self.data['Material values'].index(material_ind))
-        self.room_configs['walls'] = self.data['Material values'].index(material_ind)
-
-    def floor_material_changed(self, material_ind):
-        self.floor.setCurrentIndex(self.data['Material values'].index(material_ind))
-        self.room_configs['Room']['floor'] = self.data['Material values'].index(material_ind)
-
-    def load_parameters_to_data_and_destroy(self):
-        self.load_parameters_to_data()
-        self.hide()
-
-    def load_parameters_to_data(self):
-        with open('Data.yaml') as f:
-            d = yaml.load(f, Loader=FullLoader)
-            d['Room'] = self.room_configs
-        with open('Data.yaml', 'w') as f:
-            yaml.dump(d, f, sort_keys=False, indent=4)
-
-    """""
-    def change_parameter(self, param_name, param):
-        with open('test.yaml') as f:
-            data = yaml.load(f, Loader=FullLoader)
-        self.room_configs[param_name] = param
-    """""
+    def floor_material_changed(self, material):
+        print(material)
 
 
 class SimulationParametersWindow(QWidget):
     def __init__(self):
         super(SimulationParametersWindow, self).__init__()
         self.setWindowTitle("Simulation parameters")
-        self.setGeometry(150, 80, 350, 350)
-
-        with open('Initial_configs.yaml') as f:
-            self.data = yaml.load(f, Loader=FullLoader)
-        self.sim_configs = self.data['Simulation parameters']
+        self.setGeometry(150, 80, 350, 400)
 
         layout = QVBoxLayout()
         layout1 = QGridLayout()
         layout2 = QHBoxLayout()
+
+        self.fs_label = QLabel("Sampling frequency")
+        self.max_order_label = QLabel("Max order")
+        self.rt60_label = QLabel("Reverberation time (RT60)")
+        self.absorbtion_label = QLabel("Air absorbtion")
+        self.ray_tracing_label = QLabel("Ray tracing")
+        self.ref_mic_label = QLabel("Reference microphone")
+        self.snr_label = QLabel("SNR")
 
         self.fs_lineedit = QLineEdit()
         self.max_order_lineedit = QLineEdit()
         self.rt60_lineedit = QLineEdit()
         self.absorbtion = QCheckBox()
         self.absorbtion.setCheckable(True)
+        self.absorbtion.stateChanged.connect(self.show_state)
         self.ray_tracing = QCheckBox()
         self.ray_tracing.setCheckable(True)
+        self.ray_tracing.stateChanged.connect(self.show_state)
         self.ref_mic_lineedit = QLineEdit()
         self.snr_lineedit = QLineEdit()
 
-        layout1.addWidget(QLabel("Sampling frequency"), 0, 0)
+        layout1.addWidget(self.fs_label, 0, 0)
         layout1.addWidget(self.fs_lineedit, 0, 1)
-        layout1.addWidget(QLabel("Max order"), 1, 0)
+        layout1.addWidget(self.max_order_label, 1, 0)
         layout1.addWidget(self.max_order_lineedit, 1, 1)
-        layout1.addWidget(QLabel("Reverberation time (RT60)"), 2, 0)
+        layout1.addWidget(self.rt60_label, 2, 0)
         layout1.addWidget(self.rt60_lineedit, 2, 1)
-        layout1.addWidget(QLabel("Reference microphone"), 3, 0)
-        layout1.addWidget(self.ref_mic_lineedit, 3, 1)
-        layout1.addWidget(QLabel("SNR"), 4, 0)
-        layout1.addWidget(self.snr_lineedit, 4, 1)
-        layout1.addWidget(QLabel("Air absorbtion"), 5, 0)
-        layout1.addWidget(self.absorbtion, 5, 1)
-        layout1.addWidget(QLabel("Ray tracing"),  6, 0)
-        layout1.addWidget(self. ray_tracing, 6, 1)
+        layout1.addWidget(self.absorbtion_label, 3, 0)
+        layout1.addWidget(self.absorbtion, 3, 1)
+        layout1.addWidget(self.ray_tracing_label, 4, 0)
+        layout1.addWidget(self.ray_tracing, 4, 1)
+        layout1.addWidget(self.ref_mic_label, 5, 0)
+        layout1.addWidget(self.ref_mic_lineedit, 5, 1)
+        layout1.addWidget(self.snr_label, 6, 0)
+        layout1.addWidget(self.snr_lineedit, 6, 1)
+
 
         self.btn_ok = QPushButton("OK")
         self.btn_ok.setStyleSheet("color: white;")
@@ -567,67 +511,16 @@ class SimulationParametersWindow(QWidget):
         layout.addLayout(layout2)
         self.setLayout(layout)
 
-        self.fill_entries()
-
-        self.fs_lineedit.textChanged.connect(self.change_fs)
-        self.max_order_lineedit.textChanged.connect(self.change_max_order)
-        self.rt60_lineedit.textChanged.connect(self.change_reverberation_time)
-        self.absorbtion.stateChanged.connect(self.change_absorbtion)
-        self.ray_tracing.stateChanged.connect(self.change_ray_tracing)
-        self.ref_mic_lineedit.textChanged.connect(self.change_reference_mic)
-        self.snr_lineedit.textChanged.connect(self.change_snr)
-        self.btn_ok.clicked.connect(self.load_parameters_to_data_and_destroy)
-        self.btn_apply.clicked.connect(self.load_parameters_to_data)
-        self.btn_cancel.clicked.connect(self.hide)
-
-
-    def fill_entries(self):
-        self.fs_lineedit.setText(str(self.sim_configs['fs']))
-        self.max_order_lineedit.setText(str(self.sim_configs['max_order']))
-        self.rt60_lineedit.setText(str(self.sim_configs['reverberation_time']))
-        self.absorbtion.setChecked(self.sim_configs['air_absorbtion'])
-        self.ray_tracing.setChecked(self.sim_configs['ray_tracing'])
-        self.ref_mic_lineedit.setText(str(self.sim_configs['reference_microphone']))
-        self.snr_lineedit.setText(str(self.sim_configs['SNR']))
-
-    def change_fs(self, f):
-        self.sim_configs['fs'] = int(f)
-
-    def change_max_order(self, mo):
-        self.sim_configs['max_order'] = int(mo)
-
-    def change_reverberation_time(self, rt):
-        self.sim_configs['reverberation_time'] = int(rt)
-
-    def change_reference_mic(self, ref_mic):
-        self.sim_configs['reference_microphone'] = int(ref_mic)
-
-    def change_snr(self, snr):
-        self.sim_configs['SNR'] = int(snr)
-
-    def change_absorbtion(self, state):
-        self.sim_configs['air_absorbtion'] = state == Qt.Checked
-
-    def change_ray_tracing(self, state):
-        self.sim_configs['ray_tracing'] = state == Qt.Checked
-
-    def load_parameters_to_data_and_destroy(self):
-        self.load_parameters_to_data()
-        self.hide()
-
-    def load_parameters_to_data(self):
-        with open('Data.yaml') as f:
-            d = yaml.load(f, Loader=FullLoader)
-            d['Simulation parameters'] = self.sim_configs
-        with open('Data.yaml', 'w') as f:
-            yaml.dump(d, f, sort_keys=False, indent=4)
+    def show_state(self, state):
+        print(state == Qt.Checked)
+        print(state)
 
 
 
-if __name__ == "__main__":
-    #import sys
+app = QApplication(sys.argv)
 
-    app = QApplication(sys.argv)
-    window = MainWindow()
-    window.show()
-    sys.exit(app.exec_())
+window = MainWindow()
+window.show()
+
+app.exec_()
+

@@ -119,7 +119,7 @@ class MainWindow(QMainWindow):
         configs_menu.addAction(mic_action)
         configs_menu.addAction(simparams_action)
 
-        simulate_menu = menu.addMenu("Configs")
+        simulate_menu = menu.addMenu("Simulate")
         simulate_menu.addAction(settings_action)
         simulate_menu.addAction(run_action)
         simulate_menu.addAction(stop_action)
@@ -171,9 +171,11 @@ class SourceWindow(QWidget):
         self.setWindowTitle("Sources")
         self.setGeometry(150, 80, 450, 420)
 
+        """""
         with open('Initial_configs.yaml') as f:
             data = yaml.load(f, Loader=FullLoader)
         self.source_configs = data['Sources']
+        """""
 
         with open('buffer_data.yaml') as f:
             self.buffer = yaml.load(f, Loader=FullLoader)['Sources']
@@ -190,6 +192,9 @@ class SourceWindow(QWidget):
         # layout1
         self.sources = QComboBox()
         self.sources.setEditable(True)  # to add sources
+        for i in range(len(self.buffer)):
+            self.sources.addItem('Source' + str(i + 1))
+        self.sources.addItem("Add Source")
 
         self.mute_box = QCheckBox("Mute")
         self.mute_box.setCheckable(True)
@@ -265,10 +270,11 @@ class SourceWindow(QWidget):
         self.layout5.addWidget(self.btn_cancel)
         self.layout5.addWidget(self.btn_ok)
 
-        self.initialize_entries('Source1')
+        self.initialize_source_window()
+        self.filling_entries('Source1')
 
-        self.sources.currentIndexChanged.connect(self.source_index_changed)
-        self.sources.currentTextChanged.connect(self.sources_text_changed)
+        #self.sources.currentIndexChanged.connect(self.source_index_changed)
+        self.sources.currentTextChanged.connect(self.source_changed)
         # QComboBox.InsertBeforeCurrent- insert will be handled like this -
         # Insert before current item(before add source item)
         self.sources.setInsertPolicy(QComboBox.InsertBeforeCurrent)
@@ -388,8 +394,9 @@ class SourceWindow(QWidget):
     def source_index_changed(self, index):
         print("Source", index)
 
-    def sources_text_changed(self, text):
-        print(text)
+    def source_changed(self, s: str):
+        if s != 'Add Source':
+            self.filling_entries(s)
 
     def to_functional(self, selected):
         if selected:
@@ -417,11 +424,7 @@ class SourceWindow(QWidget):
         if state == True:
             print(state)  # tesnel vor sourcena comboboxum, u iran remove anel
 
-    def initialize_entries(self, s: str):
-        for i in range(len(self.source_configs)):
-            self.sources.addItem('Source' + str(i + 1))
-        self.sources.addItem("Add Source")
-
+    def initialize_source_window(self):
         self.layout_form.addWidget(self.amp_label, 0, 0)
         self.layout_form.addWidget(self.amp_line_edit, 0, 1)
         self.layout_form.addWidget(self.freq_label, 1, 0)
@@ -450,15 +453,24 @@ class SourceWindow(QWidget):
         for i in range(len(self.func_widgets)):
             self.func_widgets[i].hide()
 
+    def filling_entries(self, s: str):
         # if self.source_configs[s]['muted'] == 0:
-        func_s = self.source_configs[s]['functional_form']
-        file_s = self.source_configs[s]['wav file']
+        self.func_s = self.buffer[s]['functional_form']
+        self.file_s = self.buffer[s]['wav file']
 
-        self.x_pos_line_edit.setText(str(func_s['x']))
-        self.y_pos_line_edit.setText(str(func_s['y']))
-        self.z_pos_line_edit.setText(str(func_s['z']))
+        self.x_pos_line_edit.clear()
+        self.y_pos_line_edit.clear()
+        self.z_pos_line_edit.clear()
 
-        if self.source_configs[s]['form'] == 0:  # functional form
+        print(self.x_pos_line_edit.text())
+        # ay es hajord toxuma xndiry, set chi anum texty
+        self.x_pos_line_edit.setText(str(self.func_s['x']))
+        print(self.x_pos_line_edit.text())
+        self.y_pos_line_edit.setText(str(self.func_s['y']))
+        self.z_pos_line_edit.setText(str(self.func_s['z']))
+
+
+        if self.buffer[s]['form'] == 0:  # functional form
             self.func_radiobtn.setChecked(True)
             self.to_functional(True)
             self.file_radiobtn.setChecked(False)
@@ -467,17 +479,17 @@ class SourceWindow(QWidget):
             self.to_wav_file(True)
             self.func_radiobtn.setChecked(False)
 
-        self.amp_line_edit.setText(str(func_s['amplitude']))
-        self.fs_line_edit_.setText(str(func_s['fs']))
-        self.freq_line_edit.setText(str(func_s['frequency']))
-        self.phase_line_edit.setText(str(func_s['phase']))
-        self.time_line_edit.setText(str(func_s['time']))
+        self.amp_line_edit.setText(str(self.func_s['amplitude']))
+        self.fs_line_edit_.setText(str(self.func_s['fs']))
+        self.freq_line_edit.setText(str(self.func_s['frequency']))
+        self.phase_line_edit.setText(str(self.func_s['phase']))
+        self.time_line_edit.setText(str(self.func_s['time']))
 
-        self.file_lineedit.setText(file_s['filename'])
-        self.tstart_lineedit.setText(str(file_s['t_start']))
-        self.tend_lineedit.setText(str(file_s['t_end']))
-        self.t_lineedit.setText(str(file_s['time']))
-        self.fs_lineedit.setText(str(file_s['fs']))
+        self.file_lineedit.setText(self.file_s['filename'])
+        self.tstart_lineedit.setText(str(self.file_s['t_start']))
+        self.tend_lineedit.setText(str(self.file_s['t_end']))
+        self.t_lineedit.setText(str(self.file_s['time']))
+        self.fs_lineedit.setText(str(self.file_s['fs']))
 
     def load_parameters_to_data_and_destroy(self):
         with open('Data.yaml') as f:
@@ -501,6 +513,15 @@ class MicrophoneWindow(QWidget):
         super(MicrophoneWindow, self).__init__()
         self.setWindowTitle("Microphones")
         self.setGeometry(150, 80, 550, 250)
+
+        """""
+        with open('Initial_configs.yaml') as f:
+            data = yaml.load(f, Loader=FullLoader)
+        self.mic_configs = data['microphones']
+        """""
+
+        with open('buffer_data.yaml') as f:
+            self.buffer = yaml.load(f, Loader=FullLoader)['microphones']
 
         layout = QVBoxLayout()
         layout1 = QGridLayout()
@@ -566,6 +587,18 @@ class MicrophoneWindow(QWidget):
         layout.addLayout(layout2)
         layout.addLayout(layout3)
         self.setLayout(layout)
+
+    def filling_entries(self, m: str):
+
+        self.x_pos_line_edit.clear()
+        self.y_pos_line_edit.clear()
+        self.z_pos_line_edit.clear()
+
+        self.x_pos_line_edit.setText(self.buffer[m]['x'])
+        self.y_pos_line_edit.setText(self.buffer[m]['y'])
+        self.z_pos_line_edit.setText(self.buffer[m]['z'])
+
+
 
     def microphone_index_changed(self, index):
         print("Microphone", index)
