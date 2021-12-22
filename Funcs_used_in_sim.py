@@ -22,9 +22,6 @@ def resamplingAudio(audio, fs, newfs):
     n = math.ceil(len(audio) / fs)
     # Counting the number of added points to the initial signal
     add_to_len = n * fs - len(audio)
-    print(add_to_len)
-    print(len(audio))
-
     if add_to_len != 0:
         # Adding additional points
         audio += [0]*add_to_len

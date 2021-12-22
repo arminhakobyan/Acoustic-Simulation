@@ -44,8 +44,15 @@ Sources:
       z: 10
       muted: 0
 microphones:
-  mic1:
+  Microphone1:
     x: 20
     y: 20
     z: 20
     muted: 0
+  Microphone2:
+    x: 30
+    y: 30
+    z: 30
+    muted: 1
+
+

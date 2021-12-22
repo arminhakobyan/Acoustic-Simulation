@@ -1,8 +1,8 @@
 import sys
 import yaml
-from yaml.loader import SafeLoader
-from PyQt5.QtCore import QSize, Qt
-from PyQt5.QtGui import QPixmap
+from Sim_room_classes import *
+import numpy as np
+from PyQt5.QtCore import  Qt
 from PyQt5 import QtGui, QtWidgets, QtCore
 from Sim_room_classes import *
 from PyQt5.QtWidgets import (
@@ -15,14 +15,10 @@ from PyQt5.QtWidgets import (
     QHBoxLayout,
     QGridLayout,
     QAction,
-    QMenuBar,
-    QStatusBar,
-    QFrame,
     QPushButton,
     QComboBox,
     QCheckBox,
     QRadioButton,
-    QGroupBox,
 )
 
 
@@ -83,7 +79,7 @@ class MainWindow(QMainWindow):
         settings_action = QAction("Settings", self)
         settings_action.triggered.connect(self.onMenuBarFileClick)
         run_action = QAction("Run", self)
-        run_action.triggered.connect(self.onMenuBarFileClick)
+        run_action.triggered.connect(self.run_simulation)
         stop_action = QAction("Stop", self)
         stop_action.triggered.connect(self.onMenuBarFileClick)
 
@@ -163,6 +159,38 @@ class MainWindow(QMainWindow):
             self.sim_parameters_window.hide()
         else:
             self.sim_parameters_window.show()
+
+    def run_simulation(self):
+        with open('Data.yaml') as f:
+            configs = yaml.load(f, Loader=FullLoader)
+
+        room_confs = configs['Room']
+        sim_room = simulation_room(**room_confs)
+
+        s1_confs = configs['Sources']['Source1']['functional_form']
+        s2_confs = configs['Sources']['Source2']['wav file']
+        mic_confs = configs['microphones']['mic1']
+
+        s1_func = source_func(**s1_confs)
+        s2_wav = source_wav(**s2_confs)
+
+        source1 = create_source_functional(s1_func)
+        source2 = create_source_from_file(s2_wav)
+
+        source1.resampleaudio(newfs=sim_room.fs)
+        source2.resampleaudio(newfs=sim_room.fs)
+        source2.make_same_sizes(secondsource=source1)
+
+        sim_room.add_source(source1)
+        sim_room.add_source(source2)
+
+        mic1 = microphone(**mic_confs)
+        sim_room.add_microphone(mic1)
+
+        sim_room.generate_image_sources()
+        sim_room.compute_rir()
+        sim_room.simulate()
+        sim_room.room.mic_array.to_wav("C:\pyqtSimulation results\mic1.wav", norm=True, bitdepth=np.int16)
 
 
 class SourceWindow(QWidget):
@@ -458,14 +486,13 @@ class SourceWindow(QWidget):
         self.func_s = self.buffer[s]['functional_form']
         self.file_s = self.buffer[s]['wav file']
 
+        """""
         self.x_pos_line_edit.clear()
         self.y_pos_line_edit.clear()
         self.z_pos_line_edit.clear()
+        """""
 
-        print(self.x_pos_line_edit.text())
-        # ay es hajord toxuma xndiry, set chi anum texty
         self.x_pos_line_edit.setText(str(self.func_s['x']))
-        print(self.x_pos_line_edit.text())
         self.y_pos_line_edit.setText(str(self.func_s['y']))
         self.z_pos_line_edit.setText(str(self.func_s['z']))
 
@@ -529,9 +556,9 @@ class MicrophoneWindow(QWidget):
 
         self.microphones = QComboBox()
         self.microphones.setEditable(True)  # to add sources
-        self.microphones.addItems(["Microphone 1", "Add Microphone"])
+        self.microphones.addItems(["Microphone1", "Microphone2" "Add Microphone"])
         self.microphones.currentIndexChanged.connect(self.microphone_index_changed)
-        self.microphones.currentTextChanged.connect(self.microphone_text_changed)
+        self.microphones.currentTextChanged.connect(self.mic_changed)
         # QComboBox.InsertBeforeCurrent- insert will be handled like this - Insert before current item(before add source item)
         self.microphones.setInsertPolicy(QComboBox.InsertBeforeCurrent)
 
@@ -579,6 +606,16 @@ class MicrophoneWindow(QWidget):
         self.btn_cancel = QPushButton("Cancel")
         self.btn_cancel.setStyleSheet("Background-color: grey;")
 
+        self.filling_entries('Microphone1')
+
+        self.x_pos_line_edit.textChanged.connect(self.get_x)
+        self.y_pos_line_edit.textChanged.connect(self.get_y)
+        self.z_pos_line_edit.textChanged.connect(self.get_z)
+
+        self.btn_apply.clicked.connect(self.load_parameters_to_buffer)
+        self.btn_ok.clicked.connect(self.load_parameters_to_data_and_destroy)
+        self.btn_cancel.clicked.connect(self.hide)
+
         layout3.addWidget(self.btn_apply)
         layout3.addWidget(self.btn_cancel)
         layout3.addWidget(self.btn_ok)
@@ -589,22 +626,57 @@ class MicrophoneWindow(QWidget):
         self.setLayout(layout)
 
     def filling_entries(self, m: str):
-
         self.x_pos_line_edit.clear()
         self.y_pos_line_edit.clear()
         self.z_pos_line_edit.clear()
 
-        self.x_pos_line_edit.setText(self.buffer[m]['x'])
-        self.y_pos_line_edit.setText(self.buffer[m]['y'])
-        self.z_pos_line_edit.setText(self.buffer[m]['z'])
+        self.x_pos_line_edit.setText(str(self.buffer[m]['x']))
+        self.y_pos_line_edit.setText(str(self.buffer[m]['y']))
+        self.z_pos_line_edit.setText(str(self.buffer[m]['z']))
 
+    def get_x(self, x: str):
+        mic = str(self.microphones.currentText())
+        if x == "":
+            x = 0
 
+        self.buffer[mic]['x'] = int(x)
+
+    def get_y(self, y: str):
+        mic = str(self.microphones.currentText())
+        if y == "":
+            y = 0
+
+        self.buffer[mic]['y'] = int(y)
+
+    def get_z(self, z: str):
+        mic = str(self.microphones.currentText())
+        if z == "":
+            z = 0
+
+        self.buffer[mic]['z'] = int(z)
+
+    def load_parameters_to_data_and_destroy(self):
+        with open('Data.yaml') as f:
+            d = yaml.load(f, Loader=FullLoader)
+        d['microphones'] = self.buffer
+
+        with open('Data.yaml', 'w') as f:
+            yaml.dump(d, f)
+        self.hide()
+
+    def load_parameters_to_buffer(self):
+        with open('buffer_data.yaml') as f:
+            d = yaml.load(f, Loader=FullLoader)
+        d['microphones'] = self.buffer
+        with open('buffer_data.yaml', 'w') as f:
+            yaml.dump(d, f)
 
     def microphone_index_changed(self, index):
         print("Microphone", index)
 
-    def microphone_text_changed(self, text):
-        print(text)
+    def mic_changed(self, m: str):
+        if m != 'Add Microphone':
+            self.filling_entries(m)
 
     def show_state(self, state):
         print(state == Qt.Checked)

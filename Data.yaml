@@ -43,15 +43,15 @@ Sources:
       muted: 0
   Source2:
     form: 1
-    functional:
+    functional_form:
       amplitude: 0
       fs: 0
       frequency: 0
       phase: 0
       time: 0
-      x: 0
-      y: 0
-      z: 0
+      x: 5000
+      y: 9990
+      z: 10
       muted: 0
     wav file:
       filename: C:\passing-car-and-urban-ambience.wav
@@ -64,25 +64,10 @@ Sources:
       z: 10
       muted: 0
 microphones:
-  mic1:
+  Microphone1:
     x: 20
     y: 20
     z: 20
     muted: 0
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
