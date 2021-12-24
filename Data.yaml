@@ -1,73 +1,74 @@
 Room:
-  length: 10000
-  width: 10000
-  height: 10000
-  sources: []
-  microphones: []
-  temperature: 0
-  humadity: 0
-  walls: 20
   floor: 1
-
+  height: 9000
+  humadity: 0
+  length: 1000
+  microphones: []
+  sources: []
+  temperature: 0
+  walls: 20
+  width: 9000
 Simulation parameters:
+  SNR: 0
+  air_absorbtion: true
   fs: 16000
   max_order: 1
-  reverberation_time: 0
+  ray_tracing: false
   reference_microphone: 0
-  SNR: 0
-  air_absorbtion: True
-  ray_tracing: False
-
+  reverberation_time: 0
 Sources:
   Source1:
     form: 0
     functional_form:
-      amplitude: 5000
-      fs: 11000
+      amplitude: 50000
       frequency: 5000
-      time: 5
-      phase: 0
-      x: 5000
-      y: 10
-      z: 10
+      fs: 11000
       muted: 0
+      phase: 0
+      time: 5
+      x: 3000
+      y: 3000
+      z: 5000
     wav file:
       filename: ''
       fs: 0
-      t_start: 0
-      t_end: 0
-      time: 0
-      x: 5000
-      y: 10
-      z: 10
       muted: 0
+      t_end: 0
+      t_start: 0
+      time: 0
+      x: 3000
+      y: 3000
+      z: 5000
   Source2:
     form: 1
     functional_form:
       amplitude: 0
-      fs: 0
       frequency: 0
+      fs: 0
+      muted: 0
       phase: 0
       time: 0
-      x: 5000
-      y: 9990
+      x: 1000
+      y: 3000
       z: 10
-      muted: 0
     wav file:
       filename: C:\passing-car-and-urban-ambience.wav
       fs: 16000
-      t_start: 0
-      t_end: 5
-      time: 5
-      x: 5000
-      y: 9990
-      z: 10
       muted: 0
+      t_end: 5
+      t_start: 0
+      time: 5.0
+      x: 1000
+      y: 3000
+      z: 10
 microphones:
   Microphone1:
+    muted: 0
     x: 20
     y: 20
     z: 20
-    muted: 0
-
-
+  Microphone2:
+    muted: 1
+    x: 30
+    y: 30
+    z: 30
