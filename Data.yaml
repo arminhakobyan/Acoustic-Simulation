@@ -26,19 +26,19 @@ Sources:
       muted: 0
       phase: 0
       time: 5
-      x: 3000
+      x: 4000
       y: 3000
-      z: 5000
+      z: 2000
     wav file:
-      filename: ''
+      filename: ' '
       fs: 0
       muted: 0
       t_end: 0
       t_start: 0
-      time: 0
-      x: 3000
+      time: 0.0
+      x: 4000
       y: 3000
-      z: 5000
+      z: 2000
   Source2:
     form: 1
     functional_form:
@@ -50,7 +50,7 @@ Sources:
       time: 0
       x: 1000
       y: 3000
-      z: 10
+      z: 1000
     wav file:
       filename: C:\passing-car-and-urban-ambience.wav
       fs: 16000
@@ -60,13 +60,13 @@ Sources:
       time: 5.0
       x: 1000
       y: 3000
-      z: 10
+      z: 1000
 microphones:
   Microphone1:
     muted: 0
-    x: 20
-    y: 20
-    z: 20
+    x: 1000
+    y: 1000
+    z: 1000
   Microphone2:
     muted: 1
     x: 30

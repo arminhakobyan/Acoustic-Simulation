@@ -1,10 +1,14 @@
 import sys
+import time
 import yaml
 from Sim_room_classes import *
 import numpy as np
 from PyQt5.QtCore import Qt, QRect
 from PyQt5 import QtGui, QtWidgets, QtCore
 from Sim_room_classes import *
+from matplotlib.backends.qt_compat import QtWidgets
+from matplotlib.backends.backend_qtagg import (FigureCanvas, NavigationToolbar2QT as NavigationToolbar)
+from matplotlib.figure import Figure
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
 import matplotlib.pyplot as plt
@@ -30,10 +34,120 @@ class Room(QWidget):
         super(Room, self).__init__()
         self.setGeometry(0, 0, 400, 400)
 
-#the main window, that appears on screen just after running app
+def create_sim_room():
+    with open('buffer_data.yaml') as f:
+        configs = yaml.load(f, Loader=FullLoader)
+
+    room_confs = configs['Room']
+
+    sim_room = simulation_room(length=room_confs['length'], width=room_confs['width'], height=room_confs['height'],
+                                   fs=configs['Simulation parameters']['fs'],
+                                   max_order=configs['Simulation parameters']['max_order'],
+                                   air_absorption=configs['Simulation parameters']['air_absorbtion'],
+                                   ray_tracing=configs['Simulation parameters']['ray_tracing'],
+                                   sources=[], microphones=[])
+
+    # create soundsource objects from all sources with functional or file form, resample, and add them to sim_room
+    for source in configs['Sources']:
+        if configs['Sources'][source]['form'] == 0:
+            # get source parameters from loaded file, and create source objects
+            # if form is functional , it will be object of class - source_func
+            # if form is wav file , it will be object of class - source_wav
+            s_confs = configs['Sources'][source]['functional_form']
+            s_func = source_func(**s_confs)
+            s = create_source_functional(s_func)
+        else:
+            s_confs = configs['Sources'][source]['wav file']
+            s_file = source_wav(**s_confs)
+            s = create_source_from_file(s_file)
+        s.resampleaudio(newfs=sim_room.fs)
+        sim_room.add_source(s)
+
+    # make all sources of sim_room same size
+    for i in range(len(sim_room.list_sources)):
+        if i != 0:
+            sim_room.list_sources[i].make_same_sizes(secondsource=sim_room.list_sources[i - 1])
+
+        """""
+        if configs['Sources']['Source1']['form'] == 0:
+            s1_confs = configs['Sources']['Source1']['functional_form']
+            s1_func = source_func(**s1_confs)
+            source1 = create_source_functional(s1_func)
+        else:
+            s1_confs = configs['Sources']['Source1']['wav file']
+            s1_file = source_func(**s1_confs)
+            source1 = create_source_from_file(s1_file)
+
+        if configs['Sources']['Source2']['form'] == 0:
+            s2_confs = configs['Sources']['Source2']['functional_form']
+            s2_func = source_func(**s2_confs)
+            source2 = create_source_functional(s2_func)
+        else:
+            s2_confs = configs['Sources']['Source2']['wav file']
+            s2_file = source_wav(**s2_confs)
+            source2 = create_source_from_file(s2_file)
+
+        source1.resampleaudio(newfs=sim_room.fs)
+        source2.resampleaudio(newfs=sim_room.fs)
+        source2.make_same_sizes(secondsource=source1)
+
+        sim_room.add_source(source1)
+        sim_room.add_source(source2)
+        """""
+
+    # create microphone objects from all microphones and add them to sim_room
+    for mic in configs['microphones']:
+        mic_confs = configs['microphones'][mic]
+        m = microphone(**mic_confs)
+        sim_room.add_microphone(m)
+
+    return sim_room
+
+class _Widget(QtWidgets.QWidget):
+    def __init__(self):
+        super(_Widget, self).__init__()
+        layout = QtWidgets.QVBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+
+        self.room = create_sim_room()
+        self.fig_room, self.ax = self.room.room.plot(mic_marker_size=30, figsize=(5, 3))
+        self.ax.set_xlim([0, self.room.room_dim[0] + 5])
+        self.ax.set_ylim([0, self.room.room_dim[1] + 5])
+        self.ax.set_zlim([0, self.room.room_dim[2] + 5])
+
+        canvas = FigureCanvas(self.fig_room)
+        toolbar = NavigationToolbar(canvas, self)
+
+        layout.addWidget(toolbar)
+        layout.addWidget(canvas)
+
+    """""
+    def _update_canvas(self):
+        self.room = create_sim_room()
+        self.fig_room.set_data(self.room.room)
+
+        self.fig_room.figure.canvas.draw()
+    """""
+
+
+class CanvasWidget(QtWidgets.QWidget):
+    def __init__(self):
+        super(CanvasWidget, self).__init__()
+        self.layout = QtWidgets.QVBoxLayout(self)
+        self.layout.setContentsMargins(0, 0, 0, 0)
+        self.canvas = _Widget()
+        self.layout.addWidget(self.canvas)
+
+    def update(self):
+        self.layout.removeWidget(self.canvas)
+        self.canvas = _Widget()
+        self.layout.addWidget(self.canvas)
+
+
+# the main window, that appears on screen just after running app
 class MainWindow(QMainWindow):
     def __init__(self):
-        #parent QMainWindow constructor
+        # parent QMainWindow constructor
         super(MainWindow, self).__init__()
 
         self.setWindowTitle('My app')
@@ -41,8 +155,8 @@ class MainWindow(QMainWindow):
         self.setGeometry(geometry)
 
         self.source_window = SourceWindow(parent=self)
-        self.microphone_window = MicrophoneWindow()
-        self.room_window = RoomWindow()
+        self.microphone_window = MicrophoneWindow(parent=self)
+        self.room_window = RoomWindow(parent=self)
         self.sim_parameters_window = SimulationParametersWindow()
 
         # the main horizontal layout that shares the screen into 2 parts
@@ -53,11 +167,19 @@ class MainWindow(QMainWindow):
         self.layout_right = QVBoxLayout()
 
         # plotting room
-        self.room = Room()
-        self.plot_room(self.room)
-        # adding room plot to its layout
-        self.layout_right.addWidget(self.toolbar)
+        #self.room = Room()
+        #self.plot_room(self.room)
+
+        # room canvas
+        self.canvas = CanvasWidget()
+        self.layout_right.setContentsMargins(0, 0, 0, 0)
         self.layout_right.addWidget(self.canvas)
+        #self.layout_right.addWidget(self.button)
+       # self.button.clicked.connect(self.update_)
+
+        # adding room plot to its layout
+        #self.layout_right.addWidget(self.toolbar)
+        #self.layout_right.addWidget(self.canvas)
 
         self.layout.addLayout(self.layout_left)
         self.layout.addLayout(self.layout_right)
@@ -145,7 +267,6 @@ class MainWindow(QMainWindow):
         help_menu.addAction(doc_action)
         help_menu.addAction(aboutApp_action)
 
-
     def onMenuBarFileClick(self, status):
         print(status)
 
@@ -176,74 +297,9 @@ class MainWindow(QMainWindow):
         else:
             self.sim_parameters_window.show()
 
-    def create_sim_room(self):
-        with open('buffer_data.yaml') as f:
-            configs = yaml.load(f, Loader=FullLoader)
+    def update_(self):
+        self.canvas.update()
 
-        room_confs = configs['Room']
-
-        sim_room = simulation_room(length=room_confs['length'], width=room_confs['width'], height=room_confs['height'],
-                               fs=configs['Simulation parameters']['fs'],
-                               max_order=configs['Simulation parameters']['max_order'],
-                               air_absorption=configs['Simulation parameters']['air_absorbtion'],
-                               ray_tracing=configs['Simulation parameters']['ray_tracing'],
-                               sources=[], microphones=[])
-
-        # create soundsource objects from all sources with functional or file form, resample, and add them to sim_room
-        for source in configs['Sources']:
-            if configs['Sources'][source]['form'] == 0:
-                # get source parameters from loaded file, and create source objects
-                # if form is functional , it will be object of class - source_func
-                # if form is wav file , it will be object of class - source_wav
-                s_confs = configs['Sources'][source]['functional_form']
-                s_func = source_func(**s_confs)
-                s = create_source_functional(s_func)
-            else:
-                s_confs = configs['Sources'][source]['wav file']
-                s_file = source_wav(**s_confs)
-                s = create_source_from_file(s_file)
-            s.resampleaudio(newfs=sim_room.fs)
-            sim_room.add_source(s)
-
-        #make all sources of sim_room same size
-        for i in range(len(sim_room.list_sources)):
-            if i != 0:
-                sim_room.list_sources[i].make_same_sizes(secondsource=sim_room.list_sources[i-1])
-
-        """""
-        if configs['Sources']['Source1']['form'] == 0:
-            s1_confs = configs['Sources']['Source1']['functional_form']
-            s1_func = source_func(**s1_confs)
-            source1 = create_source_functional(s1_func)
-        else:
-            s1_confs = configs['Sources']['Source1']['wav file']
-            s1_file = source_func(**s1_confs)
-            source1 = create_source_from_file(s1_file)
-
-        if configs['Sources']['Source2']['form'] == 0:
-            s2_confs = configs['Sources']['Source2']['functional_form']
-            s2_func = source_func(**s2_confs)
-            source2 = create_source_functional(s2_func)
-        else:
-            s2_confs = configs['Sources']['Source2']['wav file']
-            s2_file = source_wav(**s2_confs)
-            source2 = create_source_from_file(s2_file)
-       
-        source1.resampleaudio(newfs=sim_room.fs)
-        source2.resampleaudio(newfs=sim_room.fs)
-        source2.make_same_sizes(secondsource=source1)
-
-        sim_room.add_source(source1)
-        sim_room.add_source(source2)
-        """""
-
-        # create microphone objects from all microphones and add them to sim_room
-        for mic in configs['microphones']:
-            mic_confs = configs['microphones'][mic]
-            m = microphone(**mic_confs)
-            sim_room.add_microphone(m)
-
-        return sim_room
 
     def run_simulation(self):
         sim_room = self.create_sim_room()
@@ -253,6 +309,7 @@ class MainWindow(QMainWindow):
         # save sound of microphone in a wav file
         sim_room.room.mic_array.to_wav("D:\\Simulation results\\mic1.wav", norm=True, bitdepth=np.int16)
 
+    """""
     def plot_room(self, target_widget):
 
         room = self.create_sim_room()
@@ -266,6 +323,7 @@ class MainWindow(QMainWindow):
         self.toolbar = NavigationToolbar(self.canvas, target_widget)
 
         self.canvas.draw()
+    """""
 
 
 class SourceWindow(QWidget):
@@ -583,7 +641,6 @@ class SourceWindow(QWidget):
         self.y_pos_line_edit.setText(str(self.func_s['y']))
         self.z_pos_line_edit.setText(str(self.func_s['z']))
 
-
         if self.buffer[s]['form'] == 0:  # functional form
             self.func_radiobtn.setChecked(True)
             self.to_functional(True)
@@ -607,15 +664,17 @@ class SourceWindow(QWidget):
 
     # connected to ok button, for pushing values to main data, and hide window
     def push_parameters_to_data_and_destroy(self):
+        self.refresh_parameters()
+
         with open('Data.yaml') as f:
             d = yaml.load(f, Loader=FullLoader)
         d['Sources'] = self.buffer
-
         with open('Data.yaml', 'w') as f:
             yaml.dump(d, f)
+
         self.hide()
 
-    # connected to applbutton, for updating buffer data
+    # connected to apply button, for updating buffer data
     def refresh_parameters(self):
         with open('buffer_data.yaml') as f:
             d = yaml.load(f, Loader=FullLoader)
@@ -624,22 +683,15 @@ class SourceWindow(QWidget):
             yaml.dump(d, f)
 
         if self.parent:
-            #self.parent.fig_room.figure.canvas.update()
-            # self.parent.canvas.axes.cla()
-            #if self.parent.fig_room:
-             #   self.parent.fig_room.clear()
-            #self.parent.room = Room()
-            #del self.parent.fig_room
-            #del self.parent.ax
-            self.parent.plot_room(self.parent.room)
-            self.parent.fig_room.figure.canvas.draw()
+            self.parent.update_()
 
 
 class MicrophoneWindow(QWidget):
-    def __init__(self):
+    def __init__(self, parent=None):
         super(MicrophoneWindow, self).__init__()
         self.setWindowTitle("Microphones")
         self.setGeometry(150, 80, 550, 250)
+        self.parent = parent
 
         """""
         with open('Initial_configs.yaml') as f:
@@ -661,7 +713,6 @@ class MicrophoneWindow(QWidget):
         self.microphones = QComboBox()
         self.microphones.setEditable(True)  # to add sources
         self.microphones.addItems(["Microphone1", "Microphone2" "Add Microphone"])
-
 
         # self.microphones.currentIndexChanged.connect(self.microphone_index_changed)
         # mic selection connect to mic_changed method
@@ -701,7 +752,7 @@ class MicrophoneWindow(QWidget):
         self.pause_btn = QPushButton("Pause")
         self.stop_btn = QPushButton("Stop")
         self.filepath_line_edit = QLineEdit()
-        #self.filepath_line_edit.setPlaceholderText("file path")
+        # self.filepath_line_edit.setPlaceholderText("file path")
         self.filepath_line_edit.setText("C:\pyqtSimulation results\mic1.wav")
 
         layout2.addWidget(self.play_btn)
@@ -771,12 +822,14 @@ class MicrophoneWindow(QWidget):
 
     # push values to main data and hide the window/ is connected to ok button
     def push_parameters_to_data_and_destroy(self):
+        self.refresh_parameters()
+
         with open('Data.yaml') as f:
             d = yaml.load(f, Loader=FullLoader)
         d['microphones'] = self.buffer
-
         with open('Data.yaml', 'w') as f:
             yaml.dump(d, f)
+
         self.hide()
 
     # push values to buffer / is connected to apply button
@@ -786,6 +839,9 @@ class MicrophoneWindow(QWidget):
         d['microphones'] = self.buffer
         with open('buffer_data.yaml', 'w') as f:
             yaml.dump(d, f)
+
+        if self.parent:
+            self.parent.update_()
 
     # this method is not used still
     def microphone_index_changed(self, index):
@@ -801,10 +857,11 @@ class MicrophoneWindow(QWidget):
 
 
 class RoomWindow(QWidget):
-    def __init__(self):
+    def __init__(self, parent=None):
         super(RoomWindow, self).__init__()
         self.setWindowTitle("Room")
         self.setGeometry(150, 80, 350, 400)
+        self.parent = parent
 
         with open('Initial_configs.yaml') as f:
             self.data = yaml.load(f, Loader=FullLoader)
@@ -924,15 +981,24 @@ class RoomWindow(QWidget):
 
     # send values to data and hide window/ connected to okbuttond
     def push_parameters_to_data_and_destroy(self):
-        self.load_parameters_to_data()
+        self.refresh_parameters()
+        with open('Data.yaml') as f:
+            d = yaml.load(f, Loader=FullLoader)
+        d['Room'] = self.buffer
+        with open('Data.yaml', 'w') as f:
+            yaml.dump(d, f)
+
         self.hide()
 
     def refresh_parameters(self):
-        with open('Data.yaml') as f:
+        with open('buffer_data.yaml') as f:
             d = yaml.load(f, Loader=FullLoader)
             d['Room'] = self.room_configs
-        with open('Data.yaml', 'w') as f:
+        with open('buffer_data.yaml', 'w') as f:
             yaml.dump(d, f, sort_keys=False, indent=4)
+
+        if self.parent:
+            self.parent.update_()
 
 
 class SimulationParametersWindow(QWidget):
