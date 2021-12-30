@@ -863,7 +863,7 @@ class RoomWindow(QWidget):
         self.setGeometry(150, 80, 350, 400)
         self.parent = parent
 
-        with open('Initial_configs.yaml') as f:
+        with open('buffer_data.yaml') as f:
             self.data = yaml.load(f, Loader=FullLoader)
         self.room_configs = self.data['Room']
 
@@ -984,7 +984,7 @@ class RoomWindow(QWidget):
         self.refresh_parameters()
         with open('Data.yaml') as f:
             d = yaml.load(f, Loader=FullLoader)
-        d['Room'] = self.buffer
+        d['Room'] = self.room_configs
         with open('Data.yaml', 'w') as f:
             yaml.dump(d, f)
 
