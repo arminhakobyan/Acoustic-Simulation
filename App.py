@@ -7,7 +7,7 @@ from PyQt5.QtCore import Qt, QRect
 from PyQt5 import QtGui, QtWidgets, QtCore
 from Sim_room_classes import *
 from matplotlib.backends.qt_compat import QtWidgets
-from matplotlib.backends.backend_qtagg import (FigureCanvas, NavigationToolbar2QT as NavigationToolbar)
+from matplotlib.backends.backend_qt5agg import (FigureCanvas, NavigationToolbar2QT as NavigationToolbar)
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
@@ -26,8 +26,68 @@ from PyQt5.QtWidgets import (
     QComboBox,
     QCheckBox,
     QRadioButton,
+    QScrollArea,
+    QGroupBox,
 )
 
+class ClickableLabel(QLabel):
+    def __init__(self, parent):
+        QLabel.__init__(self, parent)
+
+    clicked = QtCore.pyqtSignal()
+
+    def mousePressEvent(self, event):
+        self.clicked.emit()
+        QLabel.mousePressEvent(self, event)
+
+    """"
+    def mousePressEvent(self, event):
+        self.emit(SIGNAL("clicked()"))
+        QLabel.mousePressEvent(self, event)
+    """""
+
+class ScrollArea(QScrollArea):
+    def __init__(self, parent=None, objectName="", objectCount=0):
+        super(ScrollArea, self).__init__(parent)
+        self.setFixedSize(630, 200)
+        self.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
+        self.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOn)
+        self.setWidgetResizable(True)
+
+        container = QWidget()
+        self.setWidget(container)
+        vbox = QVBoxLayout(container)
+        self.obj_labels = []
+
+        for i in range(objectCount+1):
+            hbox = QHBoxLayout()
+            groupbox = QGroupBox()
+            groupbox.setFixedSize(600, 100)
+
+            if i == objectCount:
+                self.add_lb = ClickableLabel('Add '+objectName)
+                self.obj_labels.append(self.add_lb)
+                hbox.addWidget(self.add_lb)
+            else:
+                self.lb = ClickableLabel(objectName + "%s" % (i + 1))
+                self.obj_labels.append(self.lb)
+                self.play = QPushButton("Play")
+                self.pause = QPushButton("Pause")
+                self.stop = QPushButton("Stop")
+                self.mutecheckbox = QCheckBox('Mute')
+                self.removecheckbox = QCheckBox('Remove')
+
+                hbox.addWidget(self.lb)
+                hbox.addWidget(self.play)
+                hbox.addWidget(self.pause)
+                hbox.addWidget(self.stop)
+                hbox.addWidget(self.mutecheckbox)
+                hbox.addWidget(self.removecheckbox)
+
+            groupbox.setLayout(hbox)
+
+            vbox.addLayout(hbox)
+            vbox.addWidget(groupbox)
 
 class Room(QWidget):
     def __init__(self):
@@ -129,7 +189,6 @@ class _Widget(QtWidgets.QWidget):
         self.fig_room.figure.canvas.draw()
     """""
 
-
 class CanvasWidget(QtWidgets.QWidget):
     def __init__(self):
         super(CanvasWidget, self).__init__()
@@ -142,7 +201,6 @@ class CanvasWidget(QtWidgets.QWidget):
         self.layout.removeWidget(self.canvas)
         self.canvas = _Widget()
         self.layout.addWidget(self.canvas)
-
 
 # the main window, that appears on screen just after running app
 class MainWindow(QMainWindow):
@@ -161,8 +219,25 @@ class MainWindow(QMainWindow):
 
         # the main horizontal layout that shares the screen into 2 parts
         self.layout = QHBoxLayout()
+
         # left side vertical layout, where should be  widgets for source, microphone and player
         self.layout_left = QVBoxLayout()
+        self.sourceScrollArea = ScrollArea(parent=None, objectName="Source", objectCount=2)
+        self.layout_left.addWidget(self.sourceScrollArea)
+        for i in range(len(self.sourceScrollArea.obj_labels)):
+            #self.sourceScrollArea.obj_labels[i].mousePressEvent = self.show_source_from_Sources_window
+            self.sourceScrollArea.obj_labels[i].clicked.connect(self.show_source_from_Sources_window)
+
+
+
+        self.micScrollArea = ScrollArea(parent=None, objectName="Microphone", objectCount=1)
+        self.layout_left.addWidget(self.micScrollArea)
+        for i in range(len(self.micScrollArea.obj_labels)):
+            #self.micScrollArea.obj_labels[i].mousePressEvent = self.show_mic_from_Microphones_window
+            self.micScrollArea.obj_labels[i].clicked.connect(self.show_mic_from_Microphones_window)
+
+        self.layout_left.addWidget(QLabel('Player'))
+
         # right side vertical layout, where should be plots for room, sound and mic waveforms
         self.layout_right = QVBoxLayout()
 
@@ -176,6 +251,7 @@ class MainWindow(QMainWindow):
         self.layout_right.addWidget(self.canvas)
         #self.layout_right.addWidget(self.button)
        # self.button.clicked.connect(self.update_)
+        self.layout_right.addWidget(QLabel('sinusoides'))
 
         # adding room plot to its layout
         #self.layout_right.addWidget(self.toolbar)
@@ -279,11 +355,24 @@ class MainWindow(QMainWindow):
         else:
             self.source_window.show()
 
+    def show_source_from_Sources_window(self):
+        self.show_Sources_window()
+        sender = self.sender()
+        self.source_window.sources.setCurrentText(sender.text())
+        self.source_window.source_changed(s=sender.text())
+
+
     def show_Microphones_window(self):
         if self.microphone_window.isVisible():
             self.microphone_window.hide()
         else:
             self.microphone_window.show()
+
+    def show_mic_from_Microphones_window(self):
+        self.show_Microphones_window()
+        sender = self.sender()
+        self.microphone_window.microphones.setCurrentText(sender.text())
+        self.microphone_window.mic_changed(m=sender.text())
 
     def show_Room_window(self):
         if self.room_window.isVisible():
@@ -438,7 +527,7 @@ class SourceWindow(QWidget):
         self.layout5.addWidget(self.btn_cancel)
         self.layout5.addWidget(self.btn_ok)
 
-        # after creating al widgets, initialize them with buffer values
+        # after creating all widgets, initialize them with buffer values
         self.initialize_source_window()
         self.filling_entries('Source1')
 

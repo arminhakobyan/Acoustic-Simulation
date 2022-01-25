@@ -7,12 +7,11 @@ from PyQt5.QtCore import Qt, QRect
 from PyQt5 import QtGui, QtWidgets, QtCore
 from Sim_room_classes import *
 from matplotlib.backends.qt_compat import QtWidgets
-from matplotlib.backends.backend_qtagg import (FigureCanvas, NavigationToolbar2QT as NavigationToolbar)
+from matplotlib.backends.backend_qt5agg import (FigureCanvas, NavigationToolbar2QT as NavigationToolbar)
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
 import matplotlib.pyplot as plt
-import pybind11_builtins as __pybind11_builtins
 from PyQt5.QtWidgets import (
     QApplication,
     QMainWindow,
@@ -27,8 +26,68 @@ from PyQt5.QtWidgets import (
     QComboBox,
     QCheckBox,
     QRadioButton,
+    QScrollArea,
+    QGroupBox,
 )
 
+class ClickableLabel(QLabel):
+    def __init__(self, parent):
+        QLabel.__init__(self, parent)
+
+    clicked = QtCore.pyqtSignal()
+
+    def mousePressEvent(self, event):
+        self.clicked.emit()
+        QLabel.mousePressEvent(self, event)
+
+    """"
+    def mousePressEvent(self, event):
+        self.emit(SIGNAL("clicked()"))
+        QLabel.mousePressEvent(self, event)
+    """""
+
+class ScrollArea(QScrollArea):
+    def __init__(self, parent=None, objectName="", objectCount=0):
+        super(ScrollArea, self).__init__(parent)
+        self.setFixedSize(630, 200)
+        self.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
+        self.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOn)
+        self.setWidgetResizable(True)
+
+        container = QWidget()
+        self.setWidget(container)
+        vbox = QVBoxLayout(container)
+        self.obj_labels = []
+
+        for i in range(objectCount+1):
+            hbox = QHBoxLayout()
+            groupbox = QGroupBox()
+            groupbox.setFixedSize(600, 100)
+
+            if i == objectCount:
+                self.add_lb = ClickableLabel('Add '+objectName)
+                self.obj_labels.append(self.add_lb)
+                hbox.addWidget(self.add_lb)
+            else:
+                self.lb = ClickableLabel(objectName + "%s" % (i + 1))
+                self.obj_labels.append(self.lb)
+                self.play = QPushButton("Play")
+                self.pause = QPushButton("Pause")
+                self.stop = QPushButton("Stop")
+                self.mutecheckbox = QCheckBox('Mute')
+                self.removecheckbox = QCheckBox('Remove')
+
+                hbox.addWidget(self.lb)
+                hbox.addWidget(self.play)
+                hbox.addWidget(self.pause)
+                hbox.addWidget(self.stop)
+                hbox.addWidget(self.mutecheckbox)
+                hbox.addWidget(self.removecheckbox)
+
+            groupbox.setLayout(hbox)
+
+            vbox.addLayout(hbox)
+            vbox.addWidget(groupbox)
 
 class Room(QWidget):
     def __init__(self):
@@ -104,11 +163,6 @@ def create_sim_room():
 
     return sim_room
 
-def create_room_graphics():
-    sim_room = create_sim_room()
-    return Room_gui(walls=[], sources=sim_room.list_sources, mics=sim_room.list_microphones)
-
-
 class _Widget(QtWidgets.QWidget):
     def __init__(self):
         super(_Widget, self).__init__()
@@ -116,8 +170,7 @@ class _Widget(QtWidgets.QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
 
         self.room = create_sim_room()
-        self.room_graphic = Room_gui(walls=[], sources=self.room, mics=self.room.list_microphones)
-        self.fig_room, self.ax = self.room_graphic.plot(mic_marker_size=30, figsize=(5, 3))
+        self.fig_room, self.ax = self.room.room.plot(mic_marker_size=30, figsize=(5, 3))
         self.ax.set_xlim([0, self.room.room_dim[0] + 5])
         self.ax.set_ylim([0, self.room.room_dim[1] + 5])
         self.ax.set_zlim([0, self.room.room_dim[2] + 5])
@@ -136,7 +189,6 @@ class _Widget(QtWidgets.QWidget):
         self.fig_room.figure.canvas.draw()
     """""
 
-
 class CanvasWidget(QtWidgets.QWidget):
     def __init__(self):
         super(CanvasWidget, self).__init__()
@@ -149,7 +201,6 @@ class CanvasWidget(QtWidgets.QWidget):
         self.layout.removeWidget(self.canvas)
         self.canvas = _Widget()
         self.layout.addWidget(self.canvas)
-
 
 # the main window, that appears on screen just after running app
 class MainWindow(QMainWindow):
@@ -168,8 +219,25 @@ class MainWindow(QMainWindow):
 
         # the main horizontal layout that shares the screen into 2 parts
         self.layout = QHBoxLayout()
+
         # left side vertical layout, where should be  widgets for source, microphone and player
         self.layout_left = QVBoxLayout()
+        self.sourceScrollArea = ScrollArea(parent=None, objectName="Source", objectCount=2)
+        self.layout_left.addWidget(self.sourceScrollArea)
+        for i in range(len(self.sourceScrollArea.obj_labels)):
+            #self.sourceScrollArea.obj_labels[i].mousePressEvent = self.show_source_from_Sources_window
+            self.sourceScrollArea.obj_labels[i].clicked.connect(self.show_source_from_Sources_window)
+
+
+
+        self.micScrollArea = ScrollArea(parent=None, objectName="Microphone", objectCount=1)
+        self.layout_left.addWidget(self.micScrollArea)
+        for i in range(len(self.micScrollArea.obj_labels)):
+            #self.micScrollArea.obj_labels[i].mousePressEvent = self.show_mic_from_Microphones_window
+            self.micScrollArea.obj_labels[i].clicked.connect(self.show_mic_from_Microphones_window)
+
+        self.layout_left.addWidget(QLabel('Player'))
+
         # right side vertical layout, where should be plots for room, sound and mic waveforms
         self.layout_right = QVBoxLayout()
 
@@ -183,6 +251,7 @@ class MainWindow(QMainWindow):
         self.layout_right.addWidget(self.canvas)
         #self.layout_right.addWidget(self.button)
        # self.button.clicked.connect(self.update_)
+        self.layout_right.addWidget(QLabel('sinusoides'))
 
         # adding room plot to its layout
         #self.layout_right.addWidget(self.toolbar)
@@ -286,11 +355,24 @@ class MainWindow(QMainWindow):
         else:
             self.source_window.show()
 
+    def show_source_from_Sources_window(self):
+        self.show_Sources_window()
+        sender = self.sender()
+        self.source_window.sources.setCurrentText(sender.text())
+        self.source_window.source_changed(s=sender.text())
+
+
     def show_Microphones_window(self):
         if self.microphone_window.isVisible():
             self.microphone_window.hide()
         else:
             self.microphone_window.show()
+
+    def show_mic_from_Microphones_window(self):
+        self.show_Microphones_window()
+        sender = self.sender()
+        self.microphone_window.microphones.setCurrentText(sender.text())
+        self.microphone_window.mic_changed(m=sender.text())
 
     def show_Room_window(self):
         if self.room_window.isVisible():
@@ -445,7 +527,7 @@ class SourceWindow(QWidget):
         self.layout5.addWidget(self.btn_cancel)
         self.layout5.addWidget(self.btn_ok)
 
-        # after creating al widgets, initialize them with buffer values
+        # after creating all widgets, initialize them with buffer values
         self.initialize_source_window()
         self.filling_entries('Source1')
 
@@ -1116,434 +1198,6 @@ class SimulationParametersWindow(QWidget):
             d['Simulation parameters'] = self.sim_configs
         with open('Data.yaml', 'w') as f:
             yaml.dump(d, f, sort_keys=False, indent=4)
-
-
-class Wall2D(__pybind11_builtins.pybind11_object):
-    # no doc
-
-    def area(self): # real signature unknown; restored from __doc__
-        """ area(self: pyroomacoustics.libroom.Wall2D) -> float """
-        return 0.0
-
-    def __init__(self, corners, *args, **kwargs): # real signature unknown; NOTE: unreliably restored from __doc__
-        """ __init__(self: pyroomacoustics.libroom.Wall2D, corners: numpy.ndarray[numpy.float32[2, n]],
-        absorption: numpy.ndarray[numpy.float32[m, 1]] = array([0.],
-        dtype=float32), scattering: numpy.ndarray[numpy.float32[m, 1]] = array([0.],
-        dtype=float32), name: str = '') -> None """
-        pass
-
-    def intersection(self, arg0, *args, **kwargs):  # real signature unknown; NOTE: unreliably restored from __doc__
-        """ intersection(self: pyroomacoustics.libroom.Wall2D, arg0: numpy.ndarray[numpy.float32[2, 1]],
-        arg1: numpy.ndarray[numpy.float32[2, 1]], arg2: numpy.ndarray[numpy.float32[2, 1], flags.writeable]) -> int """
-        pass
-
-    def intersects(self, arg0, *args, **kwargs):  # real signature unknown; NOTE: unreliably restored from __doc__
-        """ intersects(self: pyroomacoustics.libroom.Wall2D, arg0: numpy.ndarray[numpy.float32[2, 1]],
-        arg1: numpy.ndarray[numpy.float32[2, 1]]) -> int """
-        pass
-
-    BNDRY = None  # (!) real value is '<Isect.BNDRY: 2>'
-    dim = 2
-    ENDPT = None  # (!) real value is '<Isect.ENDPT: 1>'
-    Isect = None  # (!) real value is "<class 'pyroomacoustics.libroom.Wall.Isect'>"
-    NONE = None  # (!) real value is '<Isect.NONE: -1>'
-    VALID = None  # (!) real value is '<Isect.VALID: 0>'
-
-
-    corners = property(lambda self: object(), lambda self, v: None, lambda self: None)  # default
-
-
-class Room_gui(object):
-    def __init__(self, walls, sources=None, mics=None):
-        self.walls = walls
-        self.dim = walls[0].dim
-
-        self.sources = []
-        if sources is not None:
-            for src in sources:
-                self.add_source(src)
-
-        self.mics = []
-        if mics is not None:
-            for mic in mics:
-                self.add_microphone(mic)
-
-    @classmethod
-    def from_corners(cls, corners):
-        """
-        Creates a 2D room by giving an array of corners.
-
-        Parameters
-        ----------
-        corners: (np.array dim 2xN, N>2)
-            list of corners, must be antiClockwise oriented
-        Returns
-        -------
-        Instance of a 2D room
-        """
-        # make sure the corners are wrapped in an ndarray
-        corners = np.array(corners)
-        n_walls = corners.shape[1]
-
-        corners = np.array(corners)
-        if corners.shape[0] != 2 or n_walls < 3:
-            raise ValueError("Arg corners must be more than two 2D points.")
-
-        walls = []
-        for i in range(n_walls):
-            walls.append(Wall2D(np.array([corners[:, i], corners[:, (i + 1) % n_walls]]).T))
-
-        return cls(
-            walls,
-            sources=sources,
-            mics=mics,
-        )
-
-        # We want to make sure the corners are ordered counter-clockwise
-        #if libroom.area_2d_polygon(corners) <= 0:
-        #   corners = corners[:, ::-1]
-
-    def extrude(self, height, v_vec=None):
-        """
-    Creates a 3D room by extruding a 2D polygon.
-    The polygon is typically the floor of the room and will have z-coordinate zero. The ceiling
-
-    Parameters
-    ----------
-    height : float
-        The extrusion height
-    v_vec : array-like 1D length 3, optional
-        A unit vector. An orientation for the extrusion direction. The
-        ceiling will be placed as a translation of the floor with respect
-        to this vector (The default is [0,0,1]).
-    """
-
-        if self.dim != 2:
-            raise ValueError("Can only extrude a 2D room.")
-
-        # default orientation vector is pointing up
-        if v_vec is None:
-            v_vec = np.array([0.0, 0.0, 1.0])
-
-        # check that the walls are ordered counterclock wise
-        # that should be the case if created from from_corners function
-
-        nw = len(self.walls)
-        floor_corners = np.zeros((2, nw))
-        floor_corners[:, 0] = walls[0].corners[:, 0]
-        """""
-    ordered = True
-    for iw, wall in enumerate(self.walls[1:]):
-        if not np.allclose(self.walls[iw].corners[:, 1], wall.corners[:, 0]):
-            ordered = False
-        floor_corners[:, iw + 1] = wall.corners[:, 0]
-    if not np.allclose(self.walls[-1].corners[:, 1], self.walls[0].corners[:, 0]):
-        ordered = False
-
-    if not ordered:
-        raise ValueError(
-            "The wall list should be ordered counter-clockwise, which is the case \
-            if the room is created with Room.from_corners"
-        )
-    """""
-
-        # make sure the floor_corners are ordered anti-clockwise (for now)
-        #if libroom.area_2d_polygon(floor_corners) <= 0:
-        #   floor_corners = np.fliplr(floor_corners)
-
-        walls = []
-        for i in range(nw):
-            corners = np.array(
-                [
-                    np.r_[floor_corners[:, i], 0],
-                    np.r_[floor_corners[:, (i + 1) % nw], 0],
-                    np.r_[floor_corners[:, (i + 1) % nw], 0] + height * v_vec,
-                    np.r_[floor_corners[:, i], 0] + height * v_vec,
-                ]
-            ).T
-            walls.append(Wall2D(corners)
-            )
-
-    def plot(self, figsize=None, no_axis=False, mic_marker_size=10, plot_directivity=True, ax=None):
-        """Plots the room with its walls, microphones and sources"""
-
-        try:
-            import matplotlib
-            import matplotlib.pyplot as plt
-            from matplotlib.collections import PatchCollection
-            from matplotlib.patches import Circle, Polygon, Wedge
-        except ImportError:
-            import warnings
-
-            warnings.warn("Matplotlib is required for plotting")
-            return
-
-        fig = None
-
-        if self.dim == 3:
-            import matplotlib.colors as colors
-            import matplotlib.pyplot as plt
-            import mpl_toolkits.mplot3d as a3
-            import scipy as sp
-
-            if ax is None:
-                fig = plt.figure(figsize=figsize)
-                ax = a3.Axes3D(fig)
-
-            # plot the walls
-            for w in self.walls:
-                tri = a3.art3d.Poly3DCollection([w.corners.T], alpha=0.5)
-                tri.set_color(colors.rgb2hex(sp.rand(3)))
-                tri.set_edgecolor("k")
-                ax.add_collection3d(tri)
-
-            # define some markers for different sources and colormap for damping
-            markers = ["o", "s", "v", "."]
-            cmap = plt.get_cmap("YlGnBu")
-
-            # use this to check some image sources were drawn
-            #has_drawn_img = False
-
-            # draw the scatter of images
-            for i, source in enumerate(self.sources):
-                # draw source
-                ax.scatter(
-                    source.x,        # source is an instance of soundsource class
-                    source.y,
-                    source.z,
-                    c=[cmap(1.0)],
-                    s=20,
-                    marker=markers[i % len(markers)],
-                    edgecolor=cmap(1.0),
-                )
-
-                """""
-                if plot_directivity and source.directivity is not None:
-                    azimuth_plot = np.linspace(
-                        start=0, stop=360, num=361, endpoint=True
-                    )
-                    colatitude_plot = np.linspace(
-                        start=0, stop=180, num=180, endpoint=True
-                    )
-                    
-                    ax = source.directivity.plot_response(
-                        azimuth=azimuth_plot,
-                        colatitude=colatitude_plot,
-                        degrees=True,
-                        ax=ax,
-                        offset=source.position,
-                    )
-                """""
-                """"
-                # draw images
-                if img_order is None:
-                    img_order = self.max_order
-
-                I = source.orders <= img_order
-                if len(I) > 0:
-                    has_drawn_img = True
-      
-                val = (np.log2(np.mean(source.damping, axis=0)[I]) + 10.0) / 10.0
-                # plot the images
-                ax.scatter(
-                    source.images[0, I],
-                    source.images[1, I],
-                    source.images[2, I],
-                    c=cmap(val),
-                    s=20, #Creates a 3D room by extruding a 2D polygon
-                    marker=markers[i % len(markers)],
-                    edgecolor=cmap(val),
-                )
-
-            # When no image source has been drawn, we need to use the bounding box
-            # to set correctly the limits of the plot
-            if not has_drawn_img or img_order == 0:
-                bbox = self.get_bbox()
-                ax.set_xlim3d(bbox[0, :])
-                ax.set_ylim3d(bbox[1, :])
-                ax.set_zlim3d(bbox[2, :])
-            """""
-
-            # draw the microphones
-            if self.mics is not None:                 #mic is an instance of microphone class
-                for i in range(len(self.mics)):
-                    #ax.scatter(self.mic_array.R[0][i], self.mic_array.R[1][i], self.mic_array.R[2][i], marker="x",
-                    #   linewidth=0.5, s=mic_marker_size, c="k" )
-
-                    ax.scatter(self.mics[i].x, self.mics[i].y, self.mics[i].z, marker="x",
-                       linewidth=0.5, s=mic_marker_size, c="k" )
-
-                    """""
-                    if plot_directivity and self.mic_array.directivity is not None:
-                        azimuth_plot = np.linspace(
-                            start=0, stop=360, num=361, endpoint=True
-                        )
-                    
-                    colatitude_plot = np.linspace(start=0, stop=180, num=180, endpoint=True)
-                    ax = self.mic_array.directivity[i].plot_response(
-                        azimuth=azimuth_plot,
-                        colatitude=colatitude_plot,
-                        degrees=True,
-                        ax=ax,
-                        offset=self.mic_array.R[:, i])
-                    """""
-
-        return fig, a
-
-    def is_inside(self, p, include_borders=True):
-        """
-        Checks if the given point is inside the room.
-
-        Parameters
-        ----------
-        p: array_like, length 2 or 3
-            point to be tested
-        include_borders: bool, optional
-            set true if a point on the wall must be considered inside the room
-
-        Returns
-        -------
-            True if the given point is inside the room, False otherwise.
-        """
-        p = np.array(p)
-        if self.dim != p.shape[0]:
-            raise ValueError("Dimension of room and p must match.")
-
-        # The method works as follows: we pick a reference point *outside* the room and
-        # draw a line between the point to check and the reference.
-        # If the point to check is inside the room, the line will intersect an odd
-        # number of walls. If it is outside, an even number.
-        # Unfortunately, there are a lot of corner cases when the line intersects
-        # precisely on a corner of the room for example, or is aligned with a wall.
-
-        # To avoid all these corner cases, we will do a randomized test.
-        # We will pick a point at random outside the room so that the probability
-        # a corner case happen is virtually zero. If the test raises a corner
-        # case, we will repeat the test with a different reference point.
-
-        # get the bounding box
-        bbox = self.get_bbox()
-        bbox_center = np.mean(bbox, axis=1)
-        bbox_max_dist = np.linalg.norm(bbox[:, 1] - bbox[:, 0]) / 2
-
-        # re-run until we get a non-ambiguous result
-        it = 0
-        while it < constants.get("room_isinside_max_iter"):
-
-            # Get random point outside the bounding box
-            random_vec = np.random.randn(self.dim)
-            random_vec /= np.linalg.norm(random_vec)
-            p0 = bbox_center + 2 * bbox_max_dist * random_vec
-
-            ambiguous = False  # be optimistic
-            is_on_border = False  # we have to know if the point is on the boundary
-            count = 0  # wall intersection counter
-            for i in range(len(self.walls)):
-                # intersects, border_of_wall, border_of_segment = self.walls[i].intersects(p0, p)
-                # ret = self.walls[i].intersects(p0, p)
-                loc = np.zeros(self.dim, dtype=np.float32)
-                ret = self.walls[i].intersection(p0, p, loc)
-
-                if (
-                        ret == int(Wall2D.Isect.ENDPT) or ret == 3
-                ):  # this flag is True when p is on the wall
-                    is_on_border = True
-
-                elif ret == Wall2D.Isect.BNDRY:
-                    # the intersection is on a corner of the room
-                    # but the point to check itself is *not* on the wall
-                    # then things get tricky
-                    ambiguous = True
-
-                # count the wall intersections
-                if ret >= 0:  # valid intersection
-                    count += 1
-
-            # start over when ambiguous
-            if ambiguous:
-                it += 1
-                continue
-
-            else:
-                if is_on_border and not include_borders:
-                    return False
-                elif is_on_border and include_borders:
-                    return True
-                elif count % 2 == 1:
-                    return True
-                else:
-                    return False
-
-        return False
-
-        # We should never reach this
-        #raise ValueError(
-            #Error could not determine if point is in or out in maximum number of iterations.
-            #This is most likely a bug, please report it.
-        #)
-
-    def add(self, obj):
-        """
-        Adds a sound source or microphone to a room
-
-        Parameters
-        ----------
-        obj: :py:obj:`~Sim_room_classes.soundsource` or :py:obj:`~Sim_room_classes.microphone` object
-                    The object to add
-
-        Returns
-        -------
-        :py:obj:`~Room_gui object
-            The room is returned for further tweaking.
-        """
-
-        if isinstance(obj, soundsource):
-            if not self.is_inside(np.array[obj.x, obj.y, obj.z]):
-                raise ValueError("The source must be added inside the room.")
-
-            self.sources.append(obj)
-
-        elif isinstance(obj, microphone):
-            if not self.is_inside(np.array[obj.x, obj.y, obj.z]):
-                raise ValueError("The microphone must be added inside the room.")
-
-            self.mics.append(obj)
-
-        return self
-
-    def add_source(self, loc):
-        """
-        Adds a sound source given by its position in the room.
-        Parameters
-        -----------
-        loc: ndarray, shape: (3,)
-            The location of the source in the room_configs
-        Returns
-        -------
-        :py:obj:`room
-            The room is returned for further tweaking.
-        """
-        loc = np.array(loc)
-
-        return self.add(soundsource(x=loc[0], y=loc[1], z=loc[2], muted=0))
-
-    def add_microphone(self, loc):
-        """
-        Adds a single microphone in the room.
-
-        Parameters
-        ----------
-        loc: array_like or ndarray
-            The location of the microphone. The length should be the same as the room dimension.
-
-        Returns
-        -------
-        obj - room
-             The room is returned for further tweaking.
-        """
-        loc = np.array(loc)
-
-        return self.add(microphone(x=loc[0], y=loc[1], z=loc[2], muted=0))
 
 
 if __name__ == "__main__":
