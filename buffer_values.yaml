@@ -1,7 +1,25 @@
-Material values: hard_surface brickwork rough_concrete ceramic_tiles concrete_floor
-  plasterboard glass_window wood_1.6cm audience_floor stage_floor wooden_door carpet_cotton
-  carpet_thin curtains_velvet studio_curtains chairs_wooden audience_orchestra_choir
-  facing_brick ceiling_plasterboard theatre_audience anechoic
+Material values:
+  - hard_surface
+  - brickwork
+  - rough_concrete
+  - ceramic_tiles
+  - concrete_floor
+  - plasterboard
+  - glass_window
+  - wood_1.6cm
+  - audience_floor
+  - stage_floor
+  - wooden_door
+  - carpet_cotton
+  - carpet_thin
+  - curtains_velvet
+  - studio_curtains
+  - chairs_wooden
+  - audience_orchestra_choir
+  - facing_brick
+  - ceiling_plasterboard
+  - theatre_audience
+  - anechoic
 Room:
   floor: 1
   height: 10000
@@ -21,6 +39,28 @@ Simulation parameters:
   reference_microphone: 0
   reverberation_time: 0
 Sources:
+  Source1:
+    form: 0
+    functional_form:
+      amplitude: 50000
+      frequency: 5000
+      fs: 11000
+      muted: 0
+      phase: 0
+      time: 5
+      x: 4000
+      y: 5000
+      z: 9000
+    wav file:
+      filename: ' '
+      fs: 0
+      muted: 0
+      t_end: 0
+      t_start: 0
+      time: 0.0
+      x: 4000
+      y: 5000
+      z: 9000
   Source2:
     form: 1
     functional_form:

@@ -433,17 +433,18 @@ class SourceWindow(QWidget):
 
         # layout1 - layout for select source,  mute/remove, functional/wav file
         # create widget, for select source
-        self.sources = QComboBox()
-        self.sources.setEditable(True)  # to add sources
+        self.sources_box = QComboBox()
+        self.sources_box.setEditable(True)  # to add sources
+        self.sources = []
         for i in range(len(self.buffer)):
-            self.sources.addItem('Source' + str(i + 1))
-        self.sources.addItem("Add Source")
+            self.sources.append('Source' + str(i + 1))
+        self.sources.append("Add Source")
 
+        self.sources_box.addItems(self.sources)
+        print(self.sources)
 
         self.mute_box = QCheckBox("Mute")
         self.mute_box.setCheckable(True)
-        #self.remove_box = QCheckBox("Remove")
-        #self.remove_box.setCheckable(True)
         self.remove_label = ClickableLabel('Remove')
 
         self.removed_sources = []
@@ -460,7 +461,7 @@ class SourceWindow(QWidget):
         self.file_radiobtn = QRadioButton("Wav file")
 
         # adding created widgets to layout
-        self.layout1.addWidget(self.sources, 0, 0)
+        self.layout1.addWidget(self.sources_box, 0, 0)
         self.layout1.addWidget(self.mute_box, 0, 2)
         self.layout1.addWidget(self.remove_label, 0, 3)
         self.layout1.addWidget(self.func_radiobtn, 1, 0)
@@ -528,10 +529,10 @@ class SourceWindow(QWidget):
             self.filling_entries('Source1')
 
         # source change operation connect to source_changed method
-        self.sources.currentTextChanged.connect(self.source_changed)
+        self.sources_box.currentTextChanged.connect(self.source_changed)
         # QComboBox.InsertBeforeCurrent- insert will be handled like this -
         # Insert before current item(before add source item) - for adding source
-        self.sources.setInsertPolicy(QComboBox.InsertAfterCurrent)
+        self.sources_box.setInsertPolicy(QComboBox.InsertAfterCurrent)
 
         # function/wav file selection connect to-
         # to_functional method for functional form and
@@ -570,82 +571,82 @@ class SourceWindow(QWidget):
 
     # methods connected with widgets
     def get_amplitude(self, amplitude: str):
-        source = str(self.sources.currentText())
+        source = str(self.sources_box.currentText())
         if amplitude == "":
             amplitude = 0
         self.buffer[source]['functional_form']['amplitude'] = int(amplitude)
 
     def get_frequency(self, freq: str):
-        source = str(self.sources.currentText())
+        source = str(self.sources_box.currentText())
         if freq == "":
             freq = 0
         self.buffer[source]['functional_form']['frequency'] = int(freq)
 
     def get_fs_func(self, fs: str):
-        source = str(self.sources.currentText())
+        source = str(self.sources_box.currentText())
         if fs == "":
             fs = 0
         self.buffer[source]['functional_form']['fs'] = int(fs)
 
     def get_phase(self, phase: str):
-        source = str(self.sources.currentText())
+        source = str(self.sources_box.currentText())
         if phase == "":
             phase = 0
         self.buffer[source]['functional_form']['phase'] = int(phase)
 
     def get_time_func(self, time: str):
-        source = str(self.sources.currentText())
+        source = str(self.sources_box.currentText())
         if time == "":
             time = 0
         self.buffer[source]['functional_form']['time'] = int(time)
 
     # ---- file form ---
     def get_file(self, file: str):
-        source = str(self.sources.currentText())
+        source = str(self.sources_box.currentText())
         if file == "":
             file = " "
         self.buffer[source]['wav file']['filename'] = file
 
     def get_start_time(self, stime: str):
-        source = str(self.sources.currentText())
+        source = str(self.sources_box.currentText())
         if stime == "":
             stime = 0
         self.buffer[source]['wav file']['t_start'] = int(stime)
 
     def get_end_time(self, etime: str):
-        source = str(self.sources.currentText())
+        source = str(self.sources_box.currentText())
         if etime == "":
             etime = 0
         self.buffer[source]['wav file']['t_end'] = int(etime)
 
     def get_time_fileform(self, time: str):
-        source = str(self.sources.currentText())
+        source = str(self.sources_box.currentText())
         if time == "":
             time = 0
         self.buffer[source]['wav file']['time'] = float(time)
 
     def get_fs_fileform(self, fs: str):
-        source = str(self.sources.currentText())
+        source = str(self.sources_box.currentText())
         if fs == "":
             fs = 0
         self.buffer[source]['wav file']['fs'] = int(fs)
 
     def get_x(self, x: str):
-        source = str(self.sources.currentText())
+        source = str(self.sources_box.currentText())
         if x == "":
             x = 0
         self.buffer[source]['wav file']['x'] = int(x)
         self.buffer[source]['functional_form']['x'] = int(x)
 
     def get_y(self, y: str):
-        source = str(self.sources.currentText())
+        source = str(self.sources_box.currentText())
         if y == "":
             y = 0
         self.buffer[source]['wav file']['y'] = int(y)
         self.buffer[source]['functional_form']['y'] = int(y)
 
     def get_z(self, z: str):
-        source = str(self.sources.currentText())
+        source = str(self.sources_box.currentText())
         if z == "":
             z = 0
         self.buffer[source]['wav file']['z'] = int(z)
@@ -655,7 +656,6 @@ class SourceWindow(QWidget):
         print("Source", index)
 
     def add_new_source(self, new_source_ind: int, new_source: str):
-        print(new_source)
         self.buffer[new_source] = {}
         self.buffer[new_source]['form'] = 0
 
@@ -681,16 +681,17 @@ class SourceWindow(QWidget):
         self.buffer[new_source]['wav file']['z'] = 0
         self.buffer[new_source]['wav file']['muted'] = 0
 
-        self.sources.insertItem(new_source_ind, new_source)
+        self.sources_box.insertItem(new_source_ind, new_source)
+        self.sources.append(new_source)
 
     def source_changed(self, s: str):
         if s != 'Add Source':
             self.filling_entries(s)
         else:
-            new_source_ind = self.sources.currentIndex()
+            new_source_ind = self.sources_box.currentIndex()
             new_source = 'Source' + str(new_source_ind+1)
             self.add_new_source(new_source_ind, new_source)
-            self.sources.setCurrentText(new_source)
+            self.sources_box.setCurrentText(new_source)
             self.source_changed(new_source)
 
     def to_functional(self, selected):
@@ -700,7 +701,7 @@ class SourceWindow(QWidget):
             for i in range(len(self.func_widgets)):
                 self.func_widgets[i].show()
 
-            source = str(self.sources.currentText())
+            source = str(self.sources_box.currentText())
             self.buffer[source]['form'] = 0  # source is functional form(0-func form)
 
     def to_wav_file(self, selected):
@@ -709,7 +710,7 @@ class SourceWindow(QWidget):
                 self.func_widgets[i].hide()
             for i in range(len(self.file_widgets)):
                 self.file_widgets[i].show()
-            source = str(self.sources.currentText())
+            source = str(self.sources_box.currentText())
             self.buffer[source]['form'] = 1  # source is wav form(1-file form)
 
     def browse_file(self):
@@ -717,7 +718,7 @@ class SourceWindow(QWidget):
         self.file_lineedit.setText(filename)
 
     def change_mute_state(self):
-        s = self.sources.currentText()
+        s = self.sources_box.currentText()
         if self.mute_box.isChecked():
             self.buffer[s]['functional_form']['muted'] = 1
             self.buffer[s]['wav file']['muted'] = 1
@@ -795,13 +796,14 @@ class SourceWindow(QWidget):
             for j in range(len(self.removed_sources)):
                 removed_ind = self.removed_sources[j]
                 del self.buffer['Source' + str(removed_ind + 1)]
-                self.sources.removeItem(removed_ind)
+                self.sources_box.removeItem(removed_ind)
+                self.sources.remove(removed_ind)
             self.removed_sources.clear()
             self.remove_label.setText("Remove")
 
     def update_sources(self):
-        #if len(self.removed_sources) != 0:
-        sources_count = self.sources.count() - 1
+        #if len(self.removed_sources) != 0
+        sources_count = len(self.sources) - 1
         for i in range(sources_count):
             self.sources.setItemText(index=i, text='Source' + str(i + 1))
 
@@ -847,7 +849,6 @@ class SourceWindow(QWidget):
             self.func_widgets[i].hide()
 
     def filling_entries(self, s: str):
-        # if self.source_configs[s]['muted'] == 0:
         self.func_s = self.buffer[s]['functional_form']
         self.file_s = self.buffer[s]['wav file']
 
@@ -869,12 +870,12 @@ class SourceWindow(QWidget):
             self.to_wav_file(True)
             self.func_radiobtn.setChecked(False)
 
-        index = self.sources.currentIndex()
+        index = self.sources_box.currentIndex()
+        print(index)
         if index in self.removed_sources:
             self.remove_label.setText('Removed')
         else:
             self.remove_label.setText('Remove')
-
 
         self.amp_line_edit.setText(str(self.func_s['amplitude']))
         self.fs_line_edit_.setText(str(self.func_s['fs']))
@@ -890,7 +891,7 @@ class SourceWindow(QWidget):
 
     # connected to ok button, for pushing values to main data, and hide window
     def push_parameters_to_data_and_destroy(self):
-        self.update_sources()
+        #self.update_sources()
         self.refresh_parameters()
         with open('Data.yaml') as f:
             d = yaml.load(f, Loader=FullLoader)
@@ -1347,3 +1348,7 @@ if __name__ == "__main__":
     window = MainWindow()
     window.show()
     sys.exit(app.exec_())
+
+
+
+
