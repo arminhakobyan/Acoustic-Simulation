@@ -1,7 +1,36 @@
-Material values: hard_surface brickwork rough_concrete ceramic_tiles concrete_floor
-  plasterboard glass_window wood_1.6cm audience_floor stage_floor wooden_door carpet_cotton
-  carpet_thin curtains_velvet studio_curtains chairs_wooden audience_orchestra_choir
-  facing_brick ceiling_plasterboard theatre_audience anechoic
+Material values:
+- hard_surface
+- brickwork
+- rough_concrete
+- ceramic_tiles
+- concrete_floor
+- plasterboard
+- glass_window
+- wood_1.6cm
+- audience_floor
+- stage_floor
+- wooden_door
+- carpet_cotton
+- carpet_thin
+- curtains_velvet
+- studio_curtains
+- chairs_wooden
+- audience_orchestra_choir
+- facing_brick
+- ceiling_plasterboard
+- theatre_audience
+- anechoic
+Microphones:
+  index of keys: 1
+  keys:
+  - - Microphone2
+    - 1
+  microphones:
+    1:
+      muted: 0
+      x: 4000
+      y: 4000
+      z: 4000
 Room:
   floor: 1
   height: 10000
@@ -21,36 +50,30 @@ Simulation parameters:
   reference_microphone: 0
   reverberation_time: 0
 Sources:
-  Source2:
-    form: 1
-    functional_form:
-      amplitude: 0
-      frequency: 0
-      fs: 0
-      muted: 0
-      phase: 0
-      time: 0
-      x: 1000
-      y: 3000
-      z: 1000
-    wav file:
-      filename: C:\passing-car-and-urban-ambience.wav
-      fs: 16000
-      muted: 0
-      t_end: 5
-      t_start: 0
-      time: 5.0
-      x: 1000
-      y: 3000
-      z: 1000
-microphones:
-  Microphone1:
-    muted: 0
-    x: 1000
-    y: 1000
-    z: 1000
-  Microphone2:
-    muted: 1
-    x: 30
-    y: 30
-    z: 30
+  index of keys: 1
+  keys:
+  - - Source2
+    - 1
+  sources:
+    1:
+      form: 1
+      functional_form:
+        amplitude: 0
+        frequency: 0
+        fs: 0
+        muted: 0
+        phase: 0
+        time: 0
+        x: 5000
+        y: 9990
+        z: 10
+      wav file:
+        filename: C:\passing-car-and-urban-ambience.wav
+        fs: 16000
+        muted: 0
+        t_end: 5
+        t_start: 0
+        time: 5
+        x: 5000
+        y: 9990
+        z: 10
