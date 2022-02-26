@@ -30,12 +30,10 @@ from PyQt5.QtWidgets import (
     QGroupBox,
 )
 
-"""""
 def index_2d(list, item):
     for i, x in enumerate(list):
         if item in x:
             return i, x.index(item)
-"""""
 
 class ClickableLabel(QLabel):
     def __init__(self, parent):
@@ -46,7 +44,6 @@ class ClickableLabel(QLabel):
     def mousePressEvent(self, event):
         self.clicked.emit()
         QLabel.mousePressEvent(self, event)
-
 
 class ScrollArea(QScrollArea):
     def __init__(self, parent=None, objectName="", objectCount=0):
@@ -122,21 +119,21 @@ def create_sim_room(filename='buffer_data.yaml'):
 
     # create soundsource objects from all sources with functional or file form, resample, and add them to sim_room
 
-    for s in range(source_configs['index of ids']):
-        id_source = source_configs['ID'][s]
-        if source_configs['sources'][id_source]['functional_form']['muted'] == 1 or \
-                source_configs['sources'][id_source]['wav file']['muted'] == 1:
+    for s in range(source_configs['index of keys']):
+        key_source = source_configs['keys'][s][1]
+        if source_configs['sources'][key_source]['functional_form']['muted'] == 1 or \
+                source_configs['sources'][key_source]['wav file']['muted'] == 1:
             continue
         else:
-            if source_configs['sources'][id_source]['form'] == 0:
+            if source_configs['sources'][key_source]['form'] == 0:
                 # get source parameters from loaded file, and create source objects
                 # if form is functional , it will be object of class - source_func
                 # if form is wav file , it will be object of class - source_wav
-                s_confs = source_configs['sources'][id_source]['functional_form']
+                s_confs = source_configs['sources'][key_source]['functional_form']
                 s_func = source_func(**s_confs)
                 s = create_source_functional(s_func)
             else:
-                s_confs = source_configs['sources'][id_source]['wav file']
+                s_confs = source_configs['sources'][key_source]['wav file']
                 s_file = source_wav(**s_confs)
                 s = create_source_from_file(s_file)
             s.resampleaudio(newfs=sim_room.fs)
@@ -148,12 +145,12 @@ def create_sim_room(filename='buffer_data.yaml'):
             sim_room.list_sources[i].make_same_sizes(secondsource=sim_room.list_sources[i - 1])
 
     # create microphone objects from all microphones and add them to sim_room
-    for m in range(mic_configs['index of ids']):
-        id_mic = mic_configs['ID'][m]
-        if mic_configs['microphones'][id_mic]['parameters']['muted'] == 1:
+    for m in range(mic_configs['index of keys']):
+        key_mic = mic_configs['keys'][m][1]
+        if mic_configs['microphones'][key_mic]['muted'] == 1:
             continue
         else:
-            mic_confs = mic_configs['microphones'][id_mic]['parameters']
+            mic_confs = mic_configs['microphones'][key_mic]
             m = microphone(**mic_confs)
             sim_room.add_microphone(m)
 
@@ -204,18 +201,18 @@ class MainWindow(QMainWindow):
         geometry = app.desktop().availableGeometry()
         self.setGeometry(geometry)
 
-        self.source_window = SourceWindow(parent=self, filename='Initial_configs.yaml')
-        #self.microphone_window = MicrophoneWindow(parent=self, filename='Data.yaml')
-        self.room_window = RoomWindow(parent=self, filename='Initial_configs.yaml')
-        self.sim_parameters_window = SimulationParametersWindow(parent=self, filename='Initial_configs.yaml')
+        self.source_window = SourceWindow(parent=self, filename='Data.yaml')
+        self.microphone_window = MicrophoneWindow(parent=self, filename='Data.yaml')
+        self.room_window = RoomWindow(parent=self, filename='Data.yaml')
+        self.sim_parameters_window = SimulationParametersWindow(parent=self, filename='Data.yaml')
 
         # the main horizontal layout that shares the screen into 2 parts
         self.layout = QHBoxLayout()
-        with open('Initial_configs.yaml') as f:
+        with open('Data.yaml') as f:
             self.data = yaml.load(f, FullLoader)
 
-        self.count_sources = self.data['Sources']['index of ids']
-        self.count_mics = self.data['Microphones']['index of ids']
+        self.count_sources = self.data['Sources']['index of keys']
+        self.count_mics = self.data['Microphones']['index of keys']
 
         # left side vertical layout, where should be  widgets for source, microphone and player
         self.layout_left = QVBoxLayout()
@@ -225,7 +222,7 @@ class MainWindow(QMainWindow):
         self.layout_right = QVBoxLayout()
 
         # room canvas
-        self.canvas = CanvasWidget(data_file='Initial_configs.yaml')
+        self.canvas = CanvasWidget(data_file='Data.yaml')
         self.layout_right.setContentsMargins(0, 0, 0, 0)
         self.layout_right.addWidget(self.canvas)
         self.layout_right.addWidget(QLabel('sinusoides'))
@@ -324,9 +321,9 @@ class MainWindow(QMainWindow):
             if i == len(self.sourceScrollArea.obj_labels) - 1:
                 continue
             else:
-                id = self.data['Sources']['ID'][i]
-                if self.data['Sources']['sources'][id]['functional_form']['muted'] == 1 or \
-                        self.data['Sources']['sources'][id]['wav file']['muted'] == 1:
+                k = self.data['Sources']['keys'][i][1]
+                if self.data['Sources']['sources'][k]['functional_form']['muted'] == 1 or \
+                        self.data['Sources']['sources'][k]['wav file']['muted'] == 1:
                     self.sourceScrollArea.mute_boxes[i].setChecked(True)
                 else:
                     self.sourceScrollArea.mute_boxes[i].setChecked(False)
@@ -340,8 +337,8 @@ class MainWindow(QMainWindow):
             if i == len(self.micScrollArea.obj_labels) - 1:
                 continue
             else:
-                id = self.data['Microphones']['ID'][i]
-                if self.data['Microphones']['microphones'][id]['parameters']['muted'] == 1:
+                k = self.data['Microphones']['keys'][i][1]
+                if self.data['Microphones']['microphones'][k]['muted'] == 1:
                     self.micScrollArea.mute_boxes[i].setChecked(True)
                 else:
                     self.micScrollArea.mute_boxes[i].setChecked(False)
@@ -521,7 +518,7 @@ class MainWindow(QMainWindow):
 
 
 class SourceWindow(QWidget):
-    def __init__(self, parent=None, filename='Initial_configs.yaml'):
+    def __init__(self, parent=None, filename='Data.yaml'):
         super(SourceWindow, self).__init__()
         self.setWindowTitle("Sources")
         self.setGeometry(150, 80, 450, 420)
@@ -529,9 +526,6 @@ class SourceWindow(QWidget):
 
         with open(filename) as f:
             self.buffer = yaml.load(f, Loader=FullLoader)['Sources']
-
-        self.first_call = True
-
 
         # main layout with column and rows
         self.layout = QGridLayout()
@@ -544,27 +538,31 @@ class SourceWindow(QWidget):
 
         # layout1 - layout for select source,  mute/remove, functional/wav file
         # create widget, for select source
-
+        self.previous_selected_source = ""
         self.sources_box = QComboBox()
         self.sources_box.setEditable(True)  # to add sources
         self.sources = []
-        for i in range(self.buffer['index of ids']):
-            s = 'Source'+str(self.buffer['ID'][i]+1)
-            self.sources.append(s)    # append names to combobox
+        for i in range(self.buffer['index of keys']):
+            self.sources.append(self.buffer['keys'][i][0])    # append names to combobox
         self.sources.append("Add Source")                     # Source1, Source2, Add Source
 
         self.sources_box.addItems(self.sources)
 
-
-        # creating line edit for source name
-        self.source_name = QLineEdit('Source name')
-        self.source_name.setPlaceholderText("Source name")
+        # creating line edit
+        self.line_edit_source_names = QLineEdit()
+        # setting line edit
+        self.sources_box.setLineEdit(self.line_edit_source_names)
+        self.line_edit_source_names.setPlaceholderText("Source name")
+        # getting line edit
+        # line = self.sources_box.lineEdit()  -  get string -  str(line)
+        self.line_edit_source_names.setText(self.previous_selected_source)
+        #self.line_edit_source_names.textChanged.connect(self.source_name_edit)
 
         self.mute_box = QCheckBox("Mute")
         self.mute_box.setCheckable(True)
         self.remove_label = ClickableLabel('Remove')
 
-        self.removed_sources = []                    # indices of sources labeled 'removed'
+        self.removed_sources = []                    # names of sources labeled 'removed'
 
         # create entry-widgets for input x, y, z coordinates
         self.x_pos_line_edit = QLineEdit()
@@ -579,7 +577,6 @@ class SourceWindow(QWidget):
 
         # adding created widgets to layout
         self.layout1.addWidget(self.sources_box, 0, 0)
-        self.layout1.addWidget(self.source_name, 0, 1)
         self.layout1.addWidget(self.mute_box, 0, 2)
         self.layout1.addWidget(self.remove_label, 0, 3)
         self.layout1.addWidget(self.func_radiobtn, 1, 0)
@@ -644,13 +641,11 @@ class SourceWindow(QWidget):
         # after creating all widgets, initialize them with buffer values
         self.initialize_source_window()
 
-        if self.buffer['index of ids'] != 0:
-            first_source = self.buffer['ID'][0]
-            self.sources_box.setCurrentIndex(first_source)
-            self.source_name.setText(self.sources[first_source])
-            self.filling_entries(self.sources[first_source])
-
-        self.first_call = True
+        if self.buffer['index of keys'] != 0:
+            first_source = self.buffer['keys'][0][0]
+            self.previous_selected_source = first_source
+            self.sources_box.setCurrentText(first_source)
+            self.filling_entries(first_source)
 
         # source change operation connect to source_changed method
         self.sources_box.currentTextChanged.connect(self.source_selected)
@@ -669,7 +664,6 @@ class SourceWindow(QWidget):
         self.remove_label.clicked.connect(self.remove_source_action)
         self.browse_btn.clicked.connect(self.browse_file)
 
-        self.source_name.textChanged.connect(self.get_source_name)
         self.amp_line_edit.textChanged.connect(self.get_amplitude)
         self.freq_line_edit.textChanged.connect(self.get_frequency)
         self.fs_line_edit_.textChanged.connect(self.get_fs_func)
@@ -695,193 +689,217 @@ class SourceWindow(QWidget):
         self.setLayout(self.layout)
 
 
-    def get_source_name(self, new_name: str):
-        s_ind = self.sources_box.currentIndex()
-        id = self.buffer['ID'][s_ind]
-        self.buffer['sources'][id]['name'] = new_name
-        print(new_name)
-
     # methods connected with widgets
     def get_amplitude(self, amplitude: str):
         print('in get amplitude func')
-        s_ind = self.sources_box.currentIndex()
+        source = str(self.sources_box.currentText())
         if amplitude == "":
             amplitude = 0
 
-        id = self.buffer['ID'][s_ind]
-        self.buffer['sources'][id]['functional_form']['amplitude'] = int(amplitude)
+        i, _ = index_2d(self.buffer['keys'], source)
+        k = self.buffer['keys'][i][1]
+        self.buffer['sources'][k]['functional_form']['amplitude'] = int(amplitude)
 
     def get_frequency(self, freq: str):
         print('in get_frequency func ')
-        s_ind = self.sources_box.currentIndex()
+        source = str(self.sources_box.currentText())
         if freq == "":
             freq = 0
-
-        id = self.buffer['ID'][s_ind]
-        self.buffer['sources'][id]['functional_form']['frequency'] = int(freq)
+        i, _ = index_2d(self.buffer['keys'], source)
+        k = self.buffer['keys'][i][1]
+        self.buffer['sources'][k]['functional_form']['frequency'] = int(freq)
 
     def get_fs_func(self, fs: str):
         print('in get_fs_func func ')
-        s_ind = self.sources_box.currentIndex()
+        source = str(self.sources_box.currentText())
         if fs == "":
             fs = 0
-
-        id = self.buffer['ID'][s_ind]
-        self.buffer['sources'][id]['functional_form']['fs'] = int(fs)
+        #self.buffer[source]['functional_form']['fs'] = int(fs)
+        i, _ = index_2d(self.buffer['keys'], source)
+        k = self.buffer['keys'][i][1]
+        self.buffer['sources'][k]['functional_form']['fs'] = int(fs)
 
     def get_phase(self, ph: str):
         print('in get_phase func')
-        s_ind = self.sources_box.currentIndex()
+        source = str(self.sources_box.currentText())
         if ph == "":
             ph = 0
-
-        id = self.buffer['ID'][s_ind]
-        self.buffer['sources'][id]['functional_form']['phase'] = int(ph)
+        i, _ = index_2d(self.buffer['keys'], source)
+        k = self.buffer['keys'][i][1]
+        self.buffer['sources'][k]['functional_form']['phase'] = int(ph)
 
     def get_time_func(self, time: str):
         print('in get_time_func ')
-        s_ind = self.sources_box.currentIndex()
+        source = str(self.sources_box.currentText())
         if time == "":
             time = 0
-
-        id = self.buffer['ID'][s_ind]
-        self.buffer['sources'][id]['functional_form']['time'] = int(time)
+        i, _ = index_2d(self.buffer['keys'], source)
+        k = self.buffer['keys'][i][1]
+        self.buffer['sources'][k]['functional_form']['time'] = int(time)
 
     # ---- file form ---
     def get_file(self, file: str):
         print('in get_file func')
-        s_ind = self.sources_box.currentIndex()
+        source = str(self.sources_box.currentText())
         if file == "":
             file = " "
-
-        id = self.buffer['ID'][s_ind]
-        self.buffer['sources'][id]['wav file']['filename'] = str(file)
+        i, _ = index_2d(self.buffer['keys'], source)
+        k = self.buffer['keys'][i][1]
+        self.buffer['sources'][k]['wav file']['filename'] = str(file)
 
     def get_start_time(self, stime: str):
         print('in get_start_time func ')
-        s_ind = self.sources_box.currentIndex()
+        source = str(self.sources_box.currentText())
         if stime == "":
             stime = 0
-
-        id = self.buffer['ID'][s_ind]
-        self.buffer['sources'][id]['wav file']['t_start'] = int(stime)
+        #self.buffer[source]['wav file']['t_start'] = int(stime)
+        i, _ = index_2d(self.buffer['keys'], source)
+        k = self.buffer['keys'][i][1]
+        self.buffer['sources'][k]['wav file']['t_start'] = int(stime)
 
     def get_end_time(self, etime: str):
-        s_ind = self.sources_box.currentIndex()
+        source = str(self.sources_box.currentText())
         if etime == "":
             etime = 0
-
-        id = self.buffer['ID'][s_ind]
-        self.buffer['sources'][id]['wav file']['t_end'] = int(etime)
+        #self.buffer[source]['wav file']['t_end'] = int(etime)
+        i, _ = index_2d(self.buffer['keys'], source)
+        k = self.buffer['keys'][i][1]
+        self.buffer['sources'][k]['wav file']['t_end'] = int(etime)
 
     def get_time_fileform(self, time: str):
         print('in get_time_fileform func')
-        s_ind = self.sources_box.currentIndex()
+        source = str(self.sources_box.currentText())
         if time == "":
             time = 0
 
-        id = self.buffer['ID'][s_ind]
-        self.buffer['sources'][id]['wav file']['time'] = int(time)
+        i, _ = index_2d(self.buffer['keys'], source)
+        k = self.buffer['keys'][i][1]
+        self.buffer['sources'][k]['wav file']['time'] = int(time)
 
     def get_fs_fileform(self, fs: str):
-        s_ind = self.sources_box.currentIndex()
+        source = str(self.sources_box.currentText())
         if fs == "":
             fs = 0
-        id = self.buffer['ID'][s_ind]
-        self.buffer['sources'][id]['wav file']['fs'] = int(fs)
+        #self.buffer[source]['wav file']['fs'] = int(fs)
+        i, _ = index_2d(self.buffer['keys'], source)
+        k = self.buffer['keys'][i][1]
+        self.buffer['sources'][k]['wav file']['fs'] = int(fs)
 
     def get_x(self, x: str):
-        print("in get coordinate X")
-        s_ind = self.sources_box.currentIndex()
-        print("s_ind is ", s_ind)
+        source = str(self.sources_box.currentText())
         if x == "":
             x = 0
-        id = self.buffer['ID'][s_ind]
-        print("ID is ", id)
-        self.buffer['sources'][id]['wav file']['x'] = int(x)
-        self.buffer['sources'][id]['functional_form']['x'] = int(x)
+        i, _ = index_2d(self.buffer['keys'], source)
+        k = self.buffer['keys'][i][1]
+        self.buffer['sources'][k]['wav file']['x'] = int(x)
+        self.buffer['sources'][k]['functional_form']['x'] = int(x)
 
     def get_y(self, y: str):
-        s_ind = self.sources_box.currentIndex()
+        source = str(self.sources_box.currentText())
         if y == "":
             y = 0
-        id = self.buffer['ID'][s_ind]
-        self.buffer['sources'][id]['wav file']['y'] = int(y)
-        self.buffer['sources'][id]['functional_form']['y'] = int(y)
+        i, _ = index_2d(self.buffer['keys'], source)
+        k = self.buffer['keys'][i][1]
+        self.buffer['sources'][k]['wav file']['y'] = int(y)
+        self.buffer['sources'][k]['functional_form']['y'] = int(y)
 
     def get_z(self, z: str):
-        s_ind = self.sources_box.currentIndex()
+        source = str(self.sources_box.currentText())
         if z == "":
             z = 0
-        id = self.buffer['ID'][s_ind]
-        self.buffer['sources'][id]['wav file']['z'] = int(z)
-        self.buffer['sources'][id]['functional_form']['z'] = int(z)
+        i, _ = index_2d(self.buffer['keys'], source)
+        k = self.buffer['keys'][i][1]
+        self.buffer['sources'][k]['wav file']['z'] = int(z)
+        self.buffer['sources'][k]['functional_form']['z'] = int(z)
 
     def source_index_changed(self, index):
         print("Source", index)
 
-    def source_selected(self, s: str, d=None):
+    def source_name_edit(self, new_name: str):
+        print('editTextChanged signal - source_name_edit func')
+        source = self.previous_selected_source
+
+        print('previous selected source is-', source)
+        #new_name = str(self.sources_box.lineEdit())
+        if new_name == "":
+            new_name = source
+        print('new name is -', new_name)
+        #self.line_edit_source_names.currenttextedited.emit(new_name)
+
+        ind, _ = index_2d(self.buffer['keys'], source)
+        self.buffer['keys'][ind][0] = new_name
+
+        print('self.buffer[keys][ind][0]-', self.buffer['keys'][ind][0])
+
+        ind_in_sources = self.sources.index(source)
+        self.sources[ind_in_sources] = new_name
+        print("sources-", self.sources)
+
+        if source in self.removed_sources:
+            ind_in_removed_sources = index(self.removed_sources, source)
+            self.removed_sources[ind_in_removed_sources] = new_name
+        print('removed_sources-',  self.removed_sources)
+
+    def source_selected(self, s, d=None):
         print('current text changed signal - source_selected func')
         if d == None:
             d = self.buffer
         if s != 'Add Source':
+            print('selected source-', s)
             self.filling_entries(s=s, data=d)
+            self.previous_selected_source = s
         else:
-            current_ind = d['index of ids']
+            #current_ind = self.sources_box.currentIndex()
+            current_ind = d['index of keys']
             print('current index -', current_ind)
             if current_ind > 0:
                 prev_source_ind = current_ind-1
-                prev_id = d['ID'][prev_source_ind]
-
-                new_source_id = prev_id + 1
-                # 'Source' + str(int(self.sources[prev_source_ind][6:]) + 1
-                new_source_name = 'Source'+str(new_source_id+1)
+                prev_source_name = self.sources[prev_source_ind]
+                i, _ = index_2d(d['keys'], prev_source_name)
+                prev_k = d['keys'][i][1]
+                new_source_k = prev_k + 1
+                new_source_name = 'Source'+str(new_source_k+1)
             else:
-                new_source_id = current_ind
-                new_source_name = 'Source' + str(new_source_id+1)
+                new_source_k = current_ind
+                new_source_name = 'Source' + str(new_source_k+1)
 
-            print('new_source_name ', new_source_name)
-            print('new_source_id ', new_source_id)
-            self.add_new_source(new_source_name, new_source_id)
-
+            self.add_new_source(new_source_name, new_source_k)
+            self.sources_box.insertItem(current_ind, new_source_name)
             self.sources.insert(current_ind, new_source_name)
             self.sources_box.setCurrentText(new_source_name)
-            #self.source_selected(new_source_name)
-            self.sources_box.insertItem(current_ind, new_source_name)
-            #self.source_name.setText(new_source_name)
-            print('added source ', self.sources)
+            self.source_selected(new_source_name)
+            d['index of keys'] = len(d['keys'])
 
-    def add_new_source(self, new_source_name: str, new_source_id: int):
+            print('Added source-', self.sources)
+
+    def add_new_source(self, new_source_name: str, new_source_k: int):
         print('in add_new_source()')
-        self.buffer['ID'].append(new_source_id)
-        self.buffer['index of ids'] = len(self.buffer['ID'])
+        self.buffer['keys'].append([new_source_name, new_source_k])
+        self.buffer['index of keys'] = new_source_k + 1
+        self.buffer['sources'][new_source_k] = {}
+        self.buffer['sources'][new_source_k]['form'] = 0
 
-        self.buffer['sources'][new_source_id] = {}
-        print('new_source_name ', new_source_name)
-        self.buffer['sources'][new_source_id]['name'] = new_source_name
-        self.buffer['sources'][new_source_id]['form'] = 0
+        self.buffer['sources'][new_source_k]['functional_form'] = {}
+        self.buffer['sources'][new_source_k]['wav file'] = {}
+        self.buffer['sources'][new_source_k]['functional_form']['amplitude'] = 0
+        self.buffer['sources'][new_source_k]['functional_form']['frequency'] = 0
+        self.buffer['sources'][new_source_k]['functional_form']['fs'] = 0
+        self.buffer['sources'][new_source_k]['functional_form']['phase'] = 0
+        self.buffer['sources'][new_source_k]['functional_form']['time'] = 0
+        self.buffer['sources'][new_source_k]['functional_form']['x'] = 0
+        self.buffer['sources'][new_source_k]['functional_form']['y'] = 0
+        self.buffer['sources'][new_source_k]['functional_form']['z'] = 0
+        self.buffer['sources'][new_source_k]['functional_form']['muted'] = 0
 
-        self.buffer['sources'][new_source_id]['functional_form'] = {}
-        self.buffer['sources'][new_source_id]['wav file'] = {}
-        self.buffer['sources'][new_source_id]['functional_form']['amplitude'] = 0
-        self.buffer['sources'][new_source_id]['functional_form']['frequency'] = 0
-        self.buffer['sources'][new_source_id]['functional_form']['fs'] = 8000
-        self.buffer['sources'][new_source_id]['functional_form']['phase'] = 0
-        self.buffer['sources'][new_source_id]['functional_form']['time'] = 0
-        self.buffer['sources'][new_source_id]['functional_form']['x'] = 0
-        self.buffer['sources'][new_source_id]['functional_form']['y'] = 0
-        self.buffer['sources'][new_source_id]['functional_form']['z'] = 0
-        self.buffer['sources'][new_source_id]['functional_form']['muted'] = 0
-
-        self.buffer['sources'][new_source_id]['wav file']['filename'] = ""
-        self.buffer['sources'][new_source_id]['wav file']['fs'] = 8000
-        self.buffer['sources'][new_source_id]['wav file']['t_start'] = 0
-        self.buffer['sources'][new_source_id]['wav file']['t_end'] = 0
-        self.buffer['sources'][new_source_id]['wav file']['time'] = 0
-        self.buffer['sources'][new_source_id]['wav file']['x'] = 0
-        self.buffer['sources'][new_source_id]['wav file']['y'] = 0
-        self.buffer['sources'][new_source_id]['wav file']['z'] = 0
-        self.buffer['sources'][new_source_id]['wav file']['muted'] = 0
+        self.buffer['sources'][new_source_k]['wav file']['filename'] = ""
+        self.buffer['sources'][new_source_k]['wav file']['fs'] = 0
+        self.buffer['sources'][new_source_k]['wav file']['t_start'] = 0
+        self.buffer['sources'][new_source_k]['wav file']['t_end'] = 0
+        self.buffer['sources'][new_source_k]['wav file']['time'] = 0
+        self.buffer['sources'][new_source_k]['wav file']['x'] = 0
+        self.buffer['sources'][new_source_k]['wav file']['y'] = 0
+        self.buffer['sources'][new_source_k]['wav file']['z'] = 0
+        self.buffer['sources'][new_source_k]['wav file']['muted'] = 0
 
     def to_functional(self, selected):
         if selected:
@@ -890,10 +908,11 @@ class SourceWindow(QWidget):
             for i in range(len(self.func_widgets)):
                 self.func_widgets[i].show()
 
-            s_ind = self.sources_box.currentIndex()
-            id = self.buffer['ID'][s_ind]
+            source = str(self.sources_box.currentText())
+            j, _ = index_2d(self.buffer['keys'], source)
+            k = self.buffer['keys'][j][1]
 
-            self.buffer['sources'][id]['form'] = 0
+            self.buffer['sources'][k]['form'] = 0
 
     def to_wav_file(self, selected):
         print('to_wav_file func')
@@ -902,34 +921,36 @@ class SourceWindow(QWidget):
                 self.func_widgets[i].hide()
             for i in range(len(self.file_widgets)):
                 self.file_widgets[i].show()
-            s_ind = self.sources_box.currentIndex()
-            id = self.buffer['ID'][s_ind]
-            self.buffer['sources'][id]['form'] = 1    # source is wav form(1-file form)
+            source = str(self.sources_box.currentText())
+            i, _ = index_2d(self.buffer['keys'], source)
+            k = self.buffer['keys'][i][1]
+            self.buffer['sources'][k]['form'] = 1    # source is wav form(1-file form)
 
     def browse_file(self):
         filename, _ = QtWidgets.QFileDialog.getOpenFileName(self, 'Single File', QtCore.QDir.rootPath(), '*.wav')
         self.file_lineedit.setText(filename)
 
     def change_mute_state(self):
-        s_ind = self.sources_box.currentIndex()
+        source = str(self.sources_box.currentText())
 
-        id = self.buffer['ID'][s_ind]
+        i, _ = index_2d(self.buffer['keys'], source)
+        k = self.buffer['keys'][i][1]
         if self.mute_box.isChecked():
-            self.buffer['sources'][id]['functional_form']['muted'] = 1
-            self.buffer['sources'][id]['wav file']['muted'] = 1
+            self.buffer['sources'][k]['functional_form']['muted'] = 1
+            self.buffer['sources'][k]['wav file']['muted'] = 1
         else:
-            self.buffer['sources'][id]['functional_form']['muted'] = 0
-            self.buffer['sources'][id]['wav file']['muted'] = 0
+            self.buffer['sources'][k]['functional_form']['muted'] = 0
+            self.buffer['sources'][k]['wav file']['muted'] = 0
 
     def remove_source_action(self):
         print('in remove_source_action()')
-        s_ind = self.sources_box.currentIndex()
+        s = self.sources_box.currentText()
         if self.remove_label.text() == 'Remove':
             self.remove_label.setText('Removed')
-            self.removed_sources.append(s_ind)
+            self.removed_sources.append(s)
         else:
             self.remove_label.setText('Remove')
-            self.removed_sources.remove(s_ind)
+            self.removed_sources.remove(s)
 
         print(" removed_sources- ", self.removed_sources)
 
@@ -937,19 +958,21 @@ class SourceWindow(QWidget):
         print("in remove_sources_from_buffer func ")
         if len(self.removed_sources) != 0:
             for j in range(len(self.removed_sources)):
-                s_ind = self.removed_sources[j]
+                s = self.removed_sources[j]
+                i, _ = index_2d(self.buffer['keys'], s)
+                k = self.buffer['keys'][i][1]
 
-                id = self.buffer['ID'][s_ind]
-                print('removed', self.sources[s_ind], 'from buffer')
-                del self.buffer['ID'][s_ind]
-                del self.buffer['sources'][id]
-                self.sources.remove(s_ind)
-                self.buffer['index of ids'] = len(self.buffer['ID'])
-                print(self.buffer['index of ids'])
-                self.sources_box.removeItem(s_ind)
+                print('removed', self.buffer['keys'][i][0], " from buffer")
+                del self.buffer['keys'][i]
+                del self.buffer['sources'][k]
+                ind = self.sources.index(s)
+                self.sources.remove(s)
+                self.buffer['index of keys'] = len(self.buffer['keys'])
+                print(self.buffer['index of keys'])
+                self.sources_box.removeItem(ind)
             self.removed_sources.clear()
 
-        print('buffer ids will be - ', self.buffer['ID'])
+        print('buffer keys will be - ', self.buffer['keys'])
         print('buffer sources will be - ', self.buffer['sources'])
 
     def initialize_source_window(self):
@@ -983,27 +1006,25 @@ class SourceWindow(QWidget):
 
     def filling_entries(self,  s: str, data=None):
         print('in feeling_entries func for', s)
-
-        if data is None:
+        if data == None:
             data = self.buffer
 
-        ind = self.sources.index(s)
-        s_id = self.buffer['ID'][ind]
+        i, _ = index_2d(data['keys'], s)
+        k = data['keys'][i][1]
 
-        func_s = data['sources'][s_id]['functional_form']
-        file_s = data['sources'][s_id]['wav file']
+        func_s = data['sources'][k]['functional_form']
+        file_s = data['sources'][k]['wav file']
 
         if func_s['muted'] == 1 or file_s['muted'] == 1:
             self.mute_box.setChecked(True)
         else:
             self.mute_box.setChecked(False)
 
-        self.source_name.setText(data['sources'][s_id]['name'])
         self.x_pos_line_edit.setText(str(func_s['x']))
         self.y_pos_line_edit.setText(str(func_s['y']))
         self.z_pos_line_edit.setText(str(func_s['z']))
 
-        if data['sources'][s_id]['form'] == 0:  # functional form
+        if data['sources'][k]['form'] == 0:  # functional form
             self.func_radiobtn.setChecked(True)
             self.to_functional(True)
             self.file_radiobtn.setChecked(False)
@@ -1012,18 +1033,21 @@ class SourceWindow(QWidget):
             self.to_wav_file(True)
             self.func_radiobtn.setChecked(False)
 
-        if ind in self.removed_sources:
+        if s in self.removed_sources:
             self.remove_label.setText('Removed')
         else:
             self.remove_label.setText('Remove')
-
 
         self.amp_line_edit.setText(str(func_s['amplitude']))
         self.fs_line_edit_.setText(str(func_s['fs']))
         self.freq_line_edit.setText(str(func_s['frequency']))
         self.phase_line_edit.setText(str(func_s['phase']))
+        print('self.func_s[phase]', func_s['phase'])
         self.time_line_edit.setText(str(func_s['time']))
+        print('self.func_s[time]', func_s['time'])
+
         self.file_lineedit.setText(file_s['filename'])
+        print('self.file_s[filename]', file_s['filename'])
         self.tstart_lineedit.setText(str(file_s['t_start']))
         self.tend_lineedit.setText(str(file_s['t_end']))
         self.t_lineedit.setText(str(file_s['time']))
@@ -1044,6 +1068,7 @@ class SourceWindow(QWidget):
         self.hide()
         if self.parent:
             self.parent.update_scrolling_window()
+
 
     # connected to apply button, for updating buffer data
     def refresh_parameters(self):
@@ -1084,7 +1109,7 @@ class MicrophoneWindow(QWidget):
         self.mics_box = QComboBox()
         self.mics_box.setEditable(True)  # to add sources
         self.mics = []
-        for i in range(self.buffer['index of ids']):
+        for i in range(self.buffer['index of keys']):
             self.mics.append(self.buffer['keys'][i][0])    # append names to combobox
         self.mics.append("Add Microphone")                     # Source1, Source2, Add Source
 

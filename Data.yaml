@@ -21,16 +21,17 @@ Material values:
 - theatre_audience
 - anechoic
 Microphones:
-  index of keys: 1
-  keys:
-  - - Microphone2
-    - 1
+  ID:
+  - 0
+  index of ids: 1
   microphones:
-    1:
-      muted: 0
-      x: 4000
-      y: 4000
-      z: 4000
+    0:
+      name: Microphone1
+      parameters:
+        muted: 0
+        x: 2000
+        y: 2000
+        z: 2000
 Room:
   floor: 1
   height: 10000
@@ -50,11 +51,35 @@ Simulation parameters:
   reference_microphone: 0
   reverberation_time: 0
 Sources:
-  index of keys: 1
-  keys:
-  - - Source2
-    - 1
+  ID:
+  - 0
+  - 1
+  - 2
+  index of ids: 3
   sources:
+    0:
+      form: 0
+      functional_form:
+        amplitude: 5000
+        frequency: 5000
+        fs: 11000
+        muted: 0
+        phase: 0
+        time: 5
+        x: 5000
+        y: 10
+        z: 10
+      name: lilit
+      wav file:
+        filename: ''
+        fs: 0
+        muted: 0
+        t_end: 0
+        t_start: 0
+        time: 0
+        x: 5000
+        y: 10
+        z: 10
     1:
       form: 1
       functional_form:
@@ -67,6 +92,7 @@ Sources:
         x: 5000
         y: 9990
         z: 10
+      name: Source2
       wav file:
         filename: C:\passing-car-and-urban-ambience.wav
         fs: 16000

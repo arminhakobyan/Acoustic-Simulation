@@ -415,7 +415,7 @@ class SourceWindow(QWidget):
         # getting line edit
         # line = self.sources_box.lineEdit()  -  get string -  str(line)
         self.line_edit_source_names.setText(self.previous_selected_source)
-        self.line_edit_source_names.textChanged.connect(self.source_name_edit)
+        #self.line_edit_source_names.textChanged.connect(self.source_name_edit)
 
         self.mute_box = QCheckBox("Mute")
         self.mute_box.setCheckable(True)
