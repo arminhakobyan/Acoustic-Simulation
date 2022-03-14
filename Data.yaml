@@ -23,9 +23,11 @@ Material values:
 Microphones:
   ID:
   - 0
-  index of ids: 1
+  count: 1
+  index of ids: 0
   microphones:
     0:
+      filepath: D:\Simulation results\Microphone1.wav
       name: Microphone1
       parameters:
         muted: 0
@@ -54,8 +56,8 @@ Sources:
   ID:
   - 0
   - 1
-  - 2
-  index of ids: 3
+  count: 2
+  index of ids: 1
   sources:
     0:
       form: 0
@@ -69,7 +71,7 @@ Sources:
         x: 5000
         y: 10
         z: 10
-      name: lilit
+      name: Source1
       wav file:
         filename: ''
         fs: 0

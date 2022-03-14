@@ -40,7 +40,8 @@ Simulation parameters:
   reverberation_time: 0
 Sources:
   ID: [0, 1]
-  index of ids: 2     #number of sources
+  count: 2
+  index of ids: 1     #ids
   sources:
     0:
       name: Source1
@@ -90,10 +91,12 @@ Sources:
         muted: 0
 Microphones:
   ID: [0]
-  index of ids: 1
+  count: 1
+  index of ids: 0
   microphones:
     0:
       name: Microphone1
+      filepath: D:\Simulation results\Microphone1.wav
       parameters:
         x: 2000
         y: 2000

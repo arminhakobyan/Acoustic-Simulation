@@ -52,7 +52,6 @@ class soundsource():
                  'muted': self.muted}
 
 
-
 class microphone():
     def __init__(self, x=0, y=0, z=0, muted=0):
         self.x = x
@@ -74,7 +73,6 @@ class microphone():
                  'y': self.y,
                  'z': self.z,
                  'muted': self.muted}
-
 
 
 class simulation_room:
@@ -185,6 +183,7 @@ class source_func:
                 'z': self.z,
                 'muted': self.muted}
 
+
 class source_wav:
     def __init__(self, filename='', fs=0, t_start=0, t_end=0, time=0, x=0, y=0, z=0, muted=0):
         self.filename = filename
@@ -213,7 +212,6 @@ class source_wav:
                 'y': self.y,
                 'z': self.z,
                 'muted': self.muted}
-
 
 
 def create_source_functional(s :source_func):
