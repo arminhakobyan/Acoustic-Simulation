@@ -39,84 +39,69 @@ Simulation parameters:
   reference_microphone: 0
   reverberation_time: 0
 Sources:
-  ID: [0, 1]
+  ID:
+  - 0
+  - 1
   count: 2
-  index of ids: 1     #ids
+  index of ids: 1
   sources:
     0:
-      name: Source1
       form: 0
       functional_form:
+        amplitude: 5000
+        frequency: 5000
+        fs: 11000
+        muted: 0
+        phase: 0
+        time: 5
         x: 5000
         y: 10
         z: 10
-        muted: 0
-        fs: 11000
-        duration: 5
-        frequency_parameters:
-          freq_ids: [0, 1]
-          index: 1
-          parameters:
-            0:
-              name: F1
-              frequency: 5000
-              amplitude: 5000
-              phase: 0
-            1:
-              name: F2
-              frequency: 7000
-              amplitude: 8000
-              phase: 2
-
+      name: Source1
       wav file:
         filename: ''
         fs: 0
-        t_start: 0
+        muted: 0
         t_end: 0
+        t_start: 0
+        time: 0
         x: 5000
         y: 10
         z: 10
-        muted: 0
     1:
-      name: Source2
       form: 1
       functional_form:
-        x: 2000
-        y: 5000
-        z: 3000
+        amplitude: 0
+        frequency: 0
+        fs: 0
         muted: 0
-        fs: 11000
-        duration: 5
-        frequency_parameters:
-          freq_ids: [0]
-          index: 0
-          parameters:
-            0:
-              name: F1
-              frequency: 5000
-              amplitude: 5000
-              phase: 0
+        phase: 0
+        time: 0
+        x: 5000
+        y: 9990
+        z: 10
+      name: Source2
       wav file:
         filename: C:\passing-car-and-urban-ambience.wav
         fs: 16000
-        t_start: 0
+        muted: 0
         t_end: 5
+        t_start: 0
         time: 5
         x: 5000
         y: 9990
         z: 10
-        muted: 0
 Microphones:
-  ID: [0]
+  ID:
+  - 0
   count: 1
   index of ids: 0
   microphones:
     0:
-      name: Microphone1
       filepath: D:\Simulation results\Microphone1.wav
+      name: Microphone1
       parameters:
+        muted: 0
         x: 2000
         y: 2000
         z: 2000
-        muted: 0
-

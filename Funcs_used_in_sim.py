@@ -17,6 +17,7 @@ def twoDaudio_to_1Daudio(twod):
 
     return oned
 
+
 def resamplingAudio(audio, fs, newfs):
     # taking the nearest integre duration of the signal
     n = math.ceil(len(audio) / fs)
@@ -32,6 +33,7 @@ def resamplingAudio(audio, fs, newfs):
     new_audio = scipy.signal.resample(audio, new_audio_samples)
     return new_audio
 
+
 # make both of audios to the same - the shortest size of audio1 and audio2
 def make_same_sizes(audio1, audio2):
     if len(audio1) > len(audio2):
@@ -44,6 +46,7 @@ def make_same_sizes(audio1, audio2):
         for i in range(len(audio1)):
             audio[i] = audio1[i]
         return(audio, audio2)
+
 
 # adding t1 time from the start and t2 to the end of the audio signal
 def add_time_delay(t1, t2, audio, fs):
@@ -73,6 +76,7 @@ def time_trim(audio, fs, t_start, t_end):
 
     return new_audio
 
+
 def generateSinusoide(amplitude=0, fs=0, frequency=0, time = 5, phase = 0):
     # whole time is t
     t = 1/fs
@@ -83,3 +87,15 @@ def generateSinusoide(amplitude=0, fs=0, frequency=0, time = 5, phase = 0):
     t_seq = np.arange(n) * t
     y = amplitude * np.sin(omega * t_seq + phase)  # array-like
     return (t_seq, y)
+
+
+# F - list of dictionaries of keys - Amplitude, Frequency, Phase
+def create_sinewave(fs=0, duration=0, F_params=[]):
+    time = np.arange(0, duration, 1 / fs)
+
+    sinewave = np.empty(len(time))
+    for i in range(len(F_params)):
+        sinewave += F_params[i]['amplitude'] * np.sin(2 * np.pi * F_params[i]['frequency'] * time + F_params[i]['phase'])
+
+    print('sinwave-', sinewave)
+    return sinewave

@@ -155,6 +155,48 @@ class simulation_room:
 
 
 class source_func:
+    def __init__(self, duration=0, fs=0, frequency_parameters={}, x=0, y=0, z=0, muted=0):
+        self.duration = duration
+        self.fs = fs
+        self.frequency_parameters = frequency_parameters
+        self.frequency_parameters['freq_ids'] = frequency_parameters['freq_ids']
+        self.frequency_parameters['index'] = frequency_parameters['index']
+        self.frequency_parameters['parameters'] = frequency_parameters['parameters']
+        for i in range(len(self.frequency_parameters['freq_ids'])):
+            f_id = self.frequency_parameters['freq_ids'][i]
+            self.frequency_parameters['parameters'][f_id] = frequency_parameters['parameters'][f_id]
+            self.frequency_parameters['parameters'][f_id]['name'] = frequency_parameters['parameters'][f_id]['name']
+            self.frequency_parameters['parameters'][f_id]['frequency'] = frequency_parameters['parameters'][f_id]['frequency']
+            self.frequency_parameters['parameters'][f_id]['amplitude'] = frequency_parameters['parameters'][f_id]['amplitude']
+            self.frequency_parameters['parameters'][f_id]['phase'] = frequency_parameters['parameters'][f_id]['phase']
+
+        self.x = x
+        self.y = y
+        self.z = z
+        self.muted = muted
+
+    def set_muted(self):
+        self.muted = 1
+
+    def set_unmuted(self):
+        self.muted = 0
+
+    def to_dict(self):
+        return {'fs': self.fs,
+                'duration': duration,
+                'frequency_parameters': {'freq_ids': self.frequency_parameters['freq_ids'], 'index': self.frequency_parameters['index'],
+                                         'parameters': self.frequency_parameters['parameters']},
+                'x': self.x,
+                'y': self.y,
+                'z': self.z,
+                'muted': self.muted}
+
+    def print(self):
+        print(self.to_dict())
+
+
+"""""
+class source_func:
     def __init__(self, amplitude=0, fs=0, frequency=0, time=0, phase=0, x=0, y=0, z=0, muted=0):
         self.amplitude = amplitude
         self.fs = fs
@@ -183,7 +225,7 @@ class source_func:
                 'z': self.z,
                 'muted': self.muted}
 
-
+"""""
 class source_wav:
     def __init__(self, filename='', fs=0, t_start=0, t_end=0, time=0, x=0, y=0, z=0, muted=0):
         self.filename = filename
@@ -214,11 +256,26 @@ class source_wav:
                 'muted': self.muted}
 
 
-def create_source_functional(s :source_func):
-    _, audio = Funcs_used_in_sim.generateSinusoide(amplitude=s.amplitude, fs=s.fs, frequency=s.frequency,
-                                                    time=s.time, phase=s.phase)
+def create_source_functional(s: source_func):
+    F = []
+    for i in range(len(s.frequency_parameters['freq_ids'])):
+        f_id = s.frequency_parameters['freq_ids'][i]
+        dict_f = {}
+        dict_f['frequency'] = s.frequency_parameters['parameters'][f_id]['frequency']
+        dict_f['amplitude'] = s.frequency_parameters['parameters'][f_id]['amplitude']
+        dict_f['phase'] = s.frequency_parameters['parameters'][f_id]['phase']
+        F.append(dict_f)
+
+    audio = Funcs_used_in_sim.create_sinewave(fs=s.fs, duration=s.duration, F_params=F)
+    print('audio-', audio)
     return soundsource(audio=audio, fs=s.fs, x=s.x, y=s.y, z=s.z, muted=s.muted)
 
+"""""
+def create_source_functional(s: source_func):
+    _, audio = Funcs_used_in_sim.generateSinusoide(amplitude=s.amplitude, fs=s.fs, frequency=s.frequency,
+                                                   time=s.time, phase=s.phase)
+    return soundsource(audio=audio, fs=s.fs, x=s.x, y=s.y, z=s.z, muted=s.muted)
+"""""
 
 def create_source_from_file(s: source_wav):
     if s.time != s.t_end-s.t_start:

@@ -670,7 +670,6 @@ class MainWindow(QMainWindow):
             print('saved mic wav file in path', self.data['Microphones']['microphones'][mic_id]['filepath'])
 
 
-
 class SourceWindow(QWidget):
     def __init__(self, parent=None, filename='Initial_configs.yaml'):
         super(SourceWindow, self).__init__()

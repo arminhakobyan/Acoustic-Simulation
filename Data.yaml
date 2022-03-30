@@ -62,12 +62,25 @@ Sources:
     0:
       form: 0
       functional_form:
-        amplitude: 5000
-        frequency: 5000
+        duration: 5
+        frequency_parameters:
+          freq_ids:
+          - 0
+          - 1
+          index: 1
+          parameters:
+            0:
+              amplitude: 5000
+              frequency: 5000
+              name: F1
+              phase: 0
+            1:
+              amplitude: 8000
+              frequency: 7000
+              name: F2
+              phase: 2
         fs: 11000
         muted: 0
-        phase: 0
-        time: 5
         x: 5000
         y: 10
         z: 10
@@ -78,22 +91,28 @@ Sources:
         muted: 0
         t_end: 0
         t_start: 0
-        time: 0
         x: 5000
         y: 10
         z: 10
     1:
       form: 1
       functional_form:
-        amplitude: 0
-        frequency: 0
-        fs: 0
+        duration: 5
+        frequency_parameters:
+          freq_ids:
+          - 0
+          index: 0
+          parameters:
+            0:
+              amplitude: 5000
+              frequency: 5000
+              name: F1
+              phase: 0
+        fs: 11000
         muted: 0
-        phase: 0
-        time: 0
-        x: 5000
-        y: 9990
-        z: 10
+        x: 2000
+        y: 5000
+        z: 3000
       name: Source2
       wav file:
         filename: C:\passing-car-and-urban-ambience.wav
