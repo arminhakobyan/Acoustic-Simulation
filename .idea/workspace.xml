@@ -5,11 +5,8 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="bec8b1f1-ec11-4ae4-8650-773779b23b56" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/previous_configs.yaml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/App.py" beforeDir="false" afterPath="$PROJECT_DIR$/App.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/Data.yaml" beforeDir="false" afterPath="$PROJECT_DIR$/Data.yaml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Funcs_used_in_sim.py" beforeDir="false" afterPath="$PROJECT_DIR$/Funcs_used_in_sim.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/Initial_configs.yaml" beforeDir="false" afterPath="$PROJECT_DIR$/Initial_configs.yaml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/Sim_room_classes.py" beforeDir="false" afterPath="$PROJECT_DIR$/Sim_room_classes.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/buffer_data.yaml" beforeDir="false" afterPath="$PROJECT_DIR$/buffer_data.yaml" afterDir="false" />

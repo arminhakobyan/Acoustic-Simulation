@@ -75,11 +75,13 @@ class microphone():
                  'muted': self.muted}
 
 
-class simulation_room:
+class simulation_space:
     def __init__(self, length=10000, width=10000, height=10000, fs=16000, max_order=1, sources=[], microphones=[],
                  temperature=0, humadity=0, walls=0, floor=0, air_absorption=True, ray_tracing=False):
         self.room_dim = [length, width, height]
         self.fs = fs
+        self.walls = walls
+        self.floor = floor
         self.max_order = max_order
         self.air_absorption = air_absorption
         self.ray_tracing = ray_tracing
@@ -90,15 +92,15 @@ class simulation_room:
                                 'chairs_wooden', 'audience_orchestra_choir', 'facing_brick', 'ceiling_plasterboard',
                                 'theatre_audience', 'anechoic']
         self.mat = pra.make_materials(
-            ceiling=("anechoic", 0.1),
-            floor=("brickwork", 0.1),
-            east=("anechoic", 0.15),
-            west=("anechoic", 0.15),
-            north=("anechoic", 0.15),
-            south=("anechoic", 0.15),
+            ceiling=(self.material_values[walls], 0.1),
+            floor=(self.material_values[floor], 0.1),
+            east=(self.material_values[walls], 0.15),
+            west=(self.material_values[walls], 0.15),
+            north=(self.material_values[walls], 0.15),
+            south=(self.material_values[walls], 0.15),
         )
-        self.walls = self.material_values[20]
-        self.floor = self.material_values[1]
+        #self.walls = self.material_values[20]
+        #self.floor = self.material_values[1]
 
         self.room = pra.ShoeBox(self.room_dim, fs=self.fs, max_order=self.max_order, materials=self.mat,
                                 air_absorption=self.air_absorption, ray_tracing=self.ray_tracing)
@@ -155,9 +157,8 @@ class simulation_room:
 
 
 class source_func:
-    def __init__(self, duration=0, fs=0, frequency_parameters={}, x=0, y=0, z=0, muted=0):
+    def __init__(self, duration=0, frequency_parameters={}, x=0, y=0, z=0, muted=0):
         self.duration = duration
-        self.fs = fs
         self.frequency_parameters = frequency_parameters
         self.frequency_parameters['freq_ids'] = frequency_parameters['freq_ids']
         self.frequency_parameters['index'] = frequency_parameters['index']
@@ -182,8 +183,7 @@ class source_func:
         self.muted = 0
 
     def to_dict(self):
-        return {'fs': self.fs,
-                'duration': duration,
+        return {'duration': duration,
                 'frequency_parameters': {'freq_ids': self.frequency_parameters['freq_ids'], 'index': self.frequency_parameters['index'],
                                          'parameters': self.frequency_parameters['parameters']},
                 'x': self.x,
@@ -227,9 +227,8 @@ class source_func:
 
 """""
 class source_wav:
-    def __init__(self, filename='', fs=0, t_start=0, t_end=0, time=0, x=0, y=0, z=0, muted=0):
+    def __init__(self, filename='', t_start=0, t_end=0, time=0, x=0, y=0, z=0, muted=0):
         self.filename = filename
-        self.fs = fs
         self.t_start = t_start
         self.t_end = t_end
         self.time = time
@@ -246,7 +245,6 @@ class source_wav:
 
     def to_dict(self):
         return {'filename': self.filename,
-                'fs': self.fs,
                 't_start': self.t_start,
                 't_end': self.t_end,
                 'time': self.time,
@@ -256,7 +254,7 @@ class source_wav:
                 'muted': self.muted}
 
 
-def create_source_functional(s: source_func):
+def create_source_functional(s: source_func, fs: int):
     F = []
     for i in range(len(s.frequency_parameters['freq_ids'])):
         f_id = s.frequency_parameters['freq_ids'][i]
@@ -266,9 +264,9 @@ def create_source_functional(s: source_func):
         dict_f['phase'] = s.frequency_parameters['parameters'][f_id]['phase']
         F.append(dict_f)
 
-    audio = Funcs_used_in_sim.create_sinewave(fs=s.fs, duration=s.duration, F_params=F)
+    audio = Funcs_used_in_sim.create_sinewave(fs=fs, duration=s.duration, F_params=F)
     print('audio-', audio)
-    return soundsource(audio=audio, fs=s.fs, x=s.x, y=s.y, z=s.z, muted=s.muted)
+    return soundsource(audio=audio, fs=fs, x=s.x, y=s.y, z=s.z, muted=s.muted)
 
 """""
 def create_source_functional(s: source_func):
@@ -277,14 +275,14 @@ def create_source_functional(s: source_func):
     return soundsource(audio=audio, fs=s.fs, x=s.x, y=s.y, z=s.z, muted=s.muted)
 """""
 
-def create_source_from_file(s: source_wav):
+def create_source_from_file(s: source_wav, fs: int):
     if s.time != s.t_end-s.t_start:
         s.time = s.t_end-s.t_start
 
     samp_f, audio = wavfile.read(s.filename)
     audio = Funcs_used_in_sim.time_trim(audio=audio, fs=samp_f, t_start=s.t_start, t_end=s.t_end)
-    audio = Funcs_used_in_sim.resamplingAudio(audio=audio, fs=samp_f, newfs=s.fs)
-    source = soundsource(audio=audio, fs=s.fs, x=s.x, y=s.y, z=s.z, muted=s.muted)
+    audio = Funcs_used_in_sim.resamplingAudio(audio=audio, fs=samp_f, newfs=fs)
+    source = soundsource(audio=audio, fs=fs, x=s.x, y=s.y, z=s.z, muted=s.muted)
     if source.audio.ndim > 1:
         source.change_to_oneD()
     return source

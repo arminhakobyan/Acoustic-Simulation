@@ -34,7 +34,15 @@ Microphones:
         x: 2000
         y: 2000
         z: 2000
-Room:
+Simulation parameters:
+  SNR: 0
+  air_absorbtion: true
+  fs: 16000
+  max_order: 1
+  ray_tracing: false
+  reference_microphone: 0
+  reverberation_time: 0
+Simulation_Space:
   floor: 1
   height: 10000
   humadity: 0
@@ -44,14 +52,6 @@ Room:
   temperature: 0
   walls: 20
   width: 10000
-Simulation parameters:
-  SNR: 0
-  air_absorbtion: true
-  fs: 16000
-  max_order: 1
-  ray_tracing: false
-  reference_microphone: 0
-  reverberation_time: 0
 Sources:
   ID:
   - 0
@@ -79,7 +79,6 @@ Sources:
               frequency: 7000
               name: F2
               phase: 2
-        fs: 11000
         muted: 0
         x: 5000
         y: 10
@@ -87,7 +86,6 @@ Sources:
       name: Source1
       wav file:
         filename: ''
-        fs: 0
         muted: 0
         t_end: 0
         t_start: 0
@@ -108,7 +106,6 @@ Sources:
               frequency: 5000
               name: F1
               phase: 0
-        fs: 11000
         muted: 0
         x: 2000
         y: 5000
@@ -116,7 +113,6 @@ Sources:
       name: Source2
       wav file:
         filename: C:\passing-car-and-urban-ambience.wav
-        fs: 16000
         muted: 0
         t_end: 5
         t_start: 0

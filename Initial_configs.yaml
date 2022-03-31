@@ -20,7 +20,7 @@ Material values:
 - ceiling_plasterboard
 - theatre_audience
 - anechoic
-Room:
+Simulation_Space:
   floor: 1
   height: 10000
   humadity: 0
@@ -51,7 +51,6 @@ Sources:
         y: 10
         z: 10
         muted: 0
-        fs: 11000
         duration: 5
         frequency_parameters:
           freq_ids: [0, 1]
@@ -70,7 +69,6 @@ Sources:
 
       wav file:
         filename: ''
-        fs: 0
         t_start: 0
         t_end: 0
         x: 5000
@@ -85,7 +83,6 @@ Sources:
         y: 5000
         z: 3000
         muted: 0
-        fs: 11000
         duration: 5
         frequency_parameters:
           freq_ids: [0]
@@ -98,7 +95,6 @@ Sources:
               phase: 0
       wav file:
         filename: C:\passing-car-and-urban-ambience.wav
-        fs: 16000
         t_start: 0
         t_end: 5
         time: 5
