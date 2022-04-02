@@ -1,10 +1,6 @@
 import sys
-from os import path, environ
-import os
-import errno
 import time
 import yaml
-from pathlib import Path
 from Sim_room_classes import *
 import numpy as np
 from scipy.io import wavfile
@@ -35,49 +31,12 @@ from PyQt5.QtWidgets import (
     QGroupBox,
 )
 
-debug_mode = True
-ERROR_INVALID_NAME = 123
-
-def is_pathname_valid(pathname: str) -> bool:
-    '''
-    `True` if the passed pathname is a valid pathname for the current OS;
-    `False` otherwise.
-    '''
-
-    if debug_mode:
-        print('in is_pathname_valid')
-
-    try:
-        if not isinstance(pathname, str) or not pathname:
-            return False
-
-        _, pathname = path.splitdrive(pathname)
-        root_dirname = environ.get('HOMEDRIVE', 'C:') \
-            if sys.platform == 'win32' else path.sep
-        assert path.isdir(root_dirname)
-
-        root_dirname = root_dirname.rstrip(path.sep) + path.sep
-
-        for pathname_part in pathname.split(path.sep):
-            try:
-                os.lstat(root_dirname + pathname_part)
-
-            except OSError as exc:
-                if hasattr(exc, 'winerror'):
-                    if exc.winerror == ERROR_INVALID_NAME:
-                        return False
-                elif exc.errno in {errno.ENAMETOOLONG, errno.ERANGE}:
-                    return False
-
-    except TypeError as exc:
-        if debug_mode:
-            print('return False')
-        return False
-    else:
-        if debug_mode:
-            print('return True')
-        return True
-
+"""""
+def index_2d(list, item):
+    for i, x in enumerate(list):
+        if item in x:
+            return i, x.index(item)
+"""""
 
 
 class ClickableLabel(QLabel):
@@ -108,10 +67,6 @@ class ScrollArea(QScrollArea):
         self.obj_labels = []
         self.mute_boxes = []
         self.remove_labels = []
-        self.play_btns = []
-        self.pause_btns = []
-        self.stop_btns = []
-
 
         for i in range(objectCount + 1):
             hbox = QHBoxLayout()
@@ -126,11 +81,8 @@ class ScrollArea(QScrollArea):
                 self.lb = ClickableLabel(self.objectNames[i])
                 self.obj_labels.append(self.lb)
                 self.play = QPushButton("Play")
-                self.play_btns.append(self.play)
                 self.pause = QPushButton("Pause")
-                self.pause_btns.append(self.pause)
                 self.stop = QPushButton("Stop")
-                self.stop_btns.append(self.stop)
                 self.mutecheckbox = QCheckBox('Mute')
                 self.mute_boxes.append(self.mutecheckbox)
                 self.remove_label = ClickableLabel("Remove")
@@ -149,30 +101,26 @@ class ScrollArea(QScrollArea):
             vbox.addWidget(groupbox)
 
 
-
-class Simulation_Space(QWidget):
+class Room(QWidget):
     def __init__(self):
-        super(Simulation_Space, self).__init__()
+        super(Room, self).__init__()
         self.setGeometry(0, 0, 400, 400)
 
 
-def create_sim_space(filename=None):
-    if debug_mode:
-        print('in create_sim_room() func')
+def create_sim_room(filename=None):
+    print('in create_sim_room() func')
     if filename == None:
         filename = 'Data.yaml'
     with open(filename) as f:
         configs = yaml.load(f, Loader=FullLoader)
 
-    space_confs = configs['Simulation_Space']
+    room_confs = configs['Room']
     source_configs = configs['Sources']
     mic_configs = configs['Microphones']
 
-    sim_space = simulation_space(length=space_confs['length'], width=space_confs['width'], height=space_confs['height'],
+    sim_room = simulation_room(length=room_confs['length'], width=room_confs['width'], height=room_confs['height'],
                                fs=configs['Simulation parameters']['fs'],
                                max_order=configs['Simulation parameters']['max_order'],
-                               walls=space_confs['walls'],
-                               floor=space_confs['floor'],
                                air_absorption=configs['Simulation parameters']['air_absorbtion'],
                                ray_tracing=configs['Simulation parameters']['ray_tracing'],
                                sources=[], microphones=[])
@@ -181,8 +129,6 @@ def create_sim_space(filename=None):
 
     for s in range(source_configs['count']):
         id_source = source_configs['ID'][s]
-        if debug_mode:
-            print('source id-', id_source)
         if source_configs['sources'][id_source]['functional_form']['muted'] == 1 or \
                 source_configs['sources'][id_source]['wav file']['muted'] == 1:
             continue
@@ -192,21 +138,19 @@ def create_sim_space(filename=None):
                 # if form is functional , it will be object of class - source_func
                 # if form is wav file , it will be object of class - source_wav
                 s_confs = source_configs['sources'][id_source]['functional_form']
-                print('s_confs', s_confs)
                 s_func = source_func(**s_confs)
-                print('s_func', s_func)
-                s = create_source_functional(s=s_func, fs=sim_space.fs)
+                s = create_source_functional(s_func)
             else:
                 s_confs = source_configs['sources'][id_source]['wav file']
                 s_file = source_wav(**s_confs)
-                s = create_source_from_file(s=s_file, fs=sim_space.fs)
-            #s.resampleaudio(newfs=sim_room.fs)
-            sim_space.add_source(s)
+                s = create_source_from_file(s_file)
+            s.resampleaudio(newfs=sim_room.fs)
+            sim_room.add_source(s)
 
     # make all sources of sim_room same size
-    for i in range(len(sim_space.list_sources)):
+    for i in range(len(sim_room.list_sources)):
         if i != 0:
-            sim_space.list_sources[i].make_same_sizes(secondsource=sim_space.list_sources[i - 1])
+            sim_room.list_sources[i].make_same_sizes(secondsource=sim_room.list_sources[i - 1])
 
     # create microphone objects from all microphones and add them to sim_room
     for m in range(mic_configs['count']):
@@ -216,9 +160,9 @@ def create_sim_space(filename=None):
         else:
             mic_confs = mic_configs['microphones'][id_mic]['parameters']
             m = microphone(**mic_confs)
-            sim_space.add_microphone(m)
+            sim_room.add_microphone(m)
 
-    return sim_space
+    return sim_room
 
 
 class _Widget(QtWidgets.QWidget):
@@ -276,8 +220,6 @@ class _Widget(QtWidgets.QWidget):
 
         # clear old scatter
         self.ax.cla()
-        if debug_mode:
-            print("cleared ax of figure")
         # write new scatter in _widget
         self.ax.scatter(self.src_x, self.src_y, self.src_z, zdir='z', c=None, depthshade=False, marker='x')
         self.ax.scatter(self.mic_x, self.mic_y, self.mic_z, zdir='z', c=None, depthshade=False, marker='o')
@@ -317,9 +259,7 @@ class _Widget(QtWidgets.QWidget):
             self.mic_z.append(microphone_coordinates[2])            # z coordinates of microphones
 
         # room coordinates (height, length, width)
-        room_coordinates = [d['Simulation_Space']['height'],
-                            d['Simulation_Space']['length'],
-                            d['Simulation_Space']['width']]
+        room_coordinates = [d['Room']['height'], d['Room']['length'], d['Room']['width']]
 
         return {'src_x': self.src_x,
                 'src_y': self.src_y,
@@ -330,44 +270,6 @@ class _Widget(QtWidgets.QWidget):
                 'room_coordinates': room_coordinates
                 }
 
-
-"""""
-class _Widget(QtWidgets.QWidget):
-    def __init__(self, data_file):
-        super(_Widget, self).__init__()
-        layout = QtWidgets.QVBoxLayout(self)
-        layout.setContentsMargins(0, 0, 0, 0)
-        self.data_file = data_file
-        self.space = create_sim_space(filename=self.data_file)
-        self.fig_space, self.ax = self.space.room.plot(mic_marker_size=30, figsize=(5, 3))
-        self.ax.set_xlim([0, self.space.room_dim[0] + 5])
-        self.ax.set_ylim([0, self.space.room_dim[1] + 5])
-        self.ax.set_zlim([0, self.space.room_dim[2] + 5])
-
-        canvas = FigureCanvas(self.fig_space)
-        toolbar = NavigationToolbar(canvas, self)
-
-        layout.addWidget(toolbar)
-        layout.addWidget(canvas)
-
-
-class CanvasWidget(QtWidgets.QWidget):
-    def __init__(self, data_file):
-        super(CanvasWidget, self).__init__()
-        self.layout = QtWidgets.QVBoxLayout(self)
-        self.layout.setContentsMargins(0, 0, 0, 0)
-        self.canvas = _Widget(data_file)
-        self.layout.addWidget(self.canvas)
-
-    def update(self, file):
-        if debug_mode:
-            print('in CanvasWidgets update() func')
-        self.layout.removeWidget(self.canvas)
-        self.canvas = _Widget(data_file=file)
-        self.layout.addWidget(self.canvas)
-        if debug_mode:
-            print('out CanvasWidgets update() func')
-"""""
 
 # the main window, that appears on screen just after running app
 class MainWindow(QMainWindow):
@@ -381,7 +283,7 @@ class MainWindow(QMainWindow):
 
         self.source_window = SourceWindow(parent=self, filename='Initial_configs.yaml')
         self.microphone_window = MicrophoneWindow(parent=self, filename='Initial_configs.yaml')
-        self.space_window = SpaceWindow(parent=self, filename='Initial_configs.yaml')
+        self.room_window = RoomWindow(parent=self, filename='Initial_configs.yaml')
         self.sim_parameters_window = SimulationParametersWindow(parent=self, filename='Initial_configs.yaml')
         self.del_source_window = None
         self.del_mic_window = None
@@ -405,10 +307,11 @@ class MainWindow(QMainWindow):
         self.layout_right = QVBoxLayout()
 
         # room canvas
-        #self.canvas = CanvasWidget(data_file='Initial_configs.yaml')
         self.canvas = _Widget(data_file='Initial_configs.yaml')
         self.layout_right.setContentsMargins(0, 0, 0, 0)
+
         self.layout_right.addWidget(self.canvas)
+
         self.layout_right.addWidget(QLabel('sinusoides'))
 
         self.layout.addLayout(self.layout_left)
@@ -430,8 +333,8 @@ class MainWindow(QMainWindow):
         exit_action.triggered.connect(self.onMenuBarFileClick)
 
         # Configs
-        space_action = QAction("Simulation Space", self)
-        space_action.triggered.connect(self.show_Space_window)
+        room_action = QAction("Room", self)
+        room_action.triggered.connect(self.show_Room_window)
         source_action = QAction("Source", self)
         source_action.triggered.connect(self.show_Sources_window)
         mic_action = QAction("Microphone", self)
@@ -474,7 +377,7 @@ class MainWindow(QMainWindow):
         file_menu.addAction(exit_action)
 
         configs_menu = menu.addMenu("Configs")
-        configs_menu.addAction(space_action)
+        configs_menu.addAction(room_action)
         configs_menu.addAction(source_action)
         configs_menu.addAction(mic_action)
         configs_menu.addAction(simparams_action)
@@ -497,9 +400,9 @@ class MainWindow(QMainWindow):
         help_menu.addAction(doc_action)
         help_menu.addAction(aboutApp_action)
 
+
     def initialize_scrollAreas(self, data=None):
-        if debug_mode:
-            print('in initialize_scrollAreas func')
+        print('in initialize_scrollAreas func')
         if data is None:
             data = self.data
 
@@ -530,9 +433,6 @@ class MainWindow(QMainWindow):
 
                 self.sourceScrollArea.mute_boxes[i].stateChanged.connect(self.mute_source_from_Sources_window)
                 self.sourceScrollArea.remove_labels[i].clicked.connect(self.show_source_message_Window)
-                self.sourceScrollArea.play_btns[i].clicked.connect(self.play_soundsource)
-                self.sourceScrollArea.pause_btns[i].clicked.connect(self.pause_soundsource)
-                self.sourceScrollArea.stop_btns[i].clicked.connect(self.stop_soundsource)
 
         # --------------------------------------------------------------------------------------
 
@@ -580,51 +480,23 @@ class MainWindow(QMainWindow):
 
         self.source_window.sources_box.setCurrentIndex(ind)
 
-    def play_soundsource(self):
-        if debug_mode:
-            print('in play_soundsource')
-        sender = self.sender()
-        ind = self.sourceScrollArea.play_btns.index(sender)
-        if debug_mode:
-            print('index-', ind)
-
-    def pause_soundsource(self):
-        if debug_mode:
-            print('in pause_soundsource')
-        sender = self.sender()
-        ind = self.sourceScrollArea.pause_btns.index(sender)
-        if debug_mode:
-            print('index-', ind)
-
-    def stop_soundsource(self):
-        if debug_mode:
-            print('in stop_soundsource')
-        sender = self.sender()
-        ind = self.sourceScrollArea.stop_btns.index(sender)
-        if debug_mode:
-            print('index-', ind)
-
     def show_source_message_Window(self):
-        if debug_mode:
-            print('in show_source_message_Window')
+        print('in show_source_message_Window')
         sender = self.sender()
         ind = self.sourceScrollArea.remove_labels.index(sender)
-        if debug_mode:
-            print('sender index-', ind)
+        print('sender index-', ind)
         self.del_source_window = MessageWindow(object='Source', object_index_to_remove=ind, parent=self)
         self.del_source_window.show()
 
     def show_accept_window(self):
-        if debug_mode:
-            print('in accept window function')
+        print('in accept window function')
         if self.AcceptWindow.isVisible():
             self.AcceptWindow.hide()
         else:
             self.AcceptWindow.show()
 
     def mute_source_from_Sources_window(self):
-        if debug_mode:
-            print('in mute_source_from_Sources_window')
+        print('in mute_source_from_Sources_window')
         sender = self.sender()
         ind = self.sourceScrollArea.mute_boxes.index(sender)
 
@@ -663,8 +535,7 @@ class MainWindow(QMainWindow):
         self.source_window.source_selected(s=source, d=sources_confs)
 
     def delete_source_from_Sources_window(self, ind):
-        if debug_mode:
-            print('in delete_source_from_Sources_window')
+        print('in delete_source_from_Sources_window')
 
         with open('Data.yaml') as f:
             d = yaml.load(f, FullLoader)
@@ -677,8 +548,7 @@ class MainWindow(QMainWindow):
         sources_confs['count'] = len(sources_confs['ID'])
 
         d['Sources'] = sources_confs
-        if debug_mode:
-            print('data: ', d['Sources'])
+        print('data: ', d['Sources'])
 
         with open('Data.yaml', 'w') as f:
             yaml.dump(d, f)
@@ -732,18 +602,15 @@ class MainWindow(QMainWindow):
         self.microphone_window.mics_box.setCurrentIndex(ind)
 
     def show_mic_message_Window(self):
-        if debug_mode:
-            print('in show_mic_message_Window')
+        print('in show_mic_message_Window')
         sender = self.sender()
         ind = self.micScrollArea.remove_labels.index(sender)
-        if debug_mode:
-            print('sender index-', ind)
+        print('sender index-', ind)
         self.del_mic_window = MessageWindow(object='Microphone', object_index_to_remove=ind, parent=self)
         self.del_mic_window.show()
 
     def mute_mic_from_Microphones_window(self):
-        if debug_mode:
-            print('in mute_mic_from_Microphones_window')
+        print('in mute_mic_from_Microphones_window')
         sender = self.sender()
         ind = self.micScrollArea.mute_boxes.index(sender)
 
@@ -780,8 +647,7 @@ class MainWindow(QMainWindow):
         self.microphone_window.mic_selected(m=mic, d=mics_confs)
 
     def delete_mic_from_Microphones_window(self, ind):
-        if debug_mode:
-            print('in delete_mic_from_Microphones_window func')
+        print('in delete_mic_from_Microphones_window func')
 
         with open('Data.yaml') as f:
             d = yaml.load(f, FullLoader)
@@ -828,11 +694,11 @@ class MainWindow(QMainWindow):
                 self.microphone_window.mics_box.removeItem(ind)
                 self.show_Microphones_window()
 
-    def show_Space_window(self):
-        if self.space_window.isVisible():
-            self.space_window.hide()
+    def show_Room_window(self):
+        if self.room_window.isVisible():
+            self.room_window.hide()
         else:
-            self.space_window.show()
+            self.room_window.show()
 
     def show_Sim_parameters_window(self):
         if self.sim_parameters_window.isVisible():
@@ -841,13 +707,11 @@ class MainWindow(QMainWindow):
             self.sim_parameters_window.show()
 
     def update_(self, file):
-        if debug_mode:
-            print('in mainwindow update func')
+        print('in mainwindow update func')
         self.canvas.update(file)
 
     def update_scrolling_window(self):
-        if debug_mode:
-            print('in update_scrolling_window')
+        print('in update_scrolling_window')
         with open('Data.yaml') as f:
             d = yaml.load(f, FullLoader)
 
@@ -856,28 +720,26 @@ class MainWindow(QMainWindow):
         self.layout_left.removeWidget(self.sourceScrollArea)
         self.initialize_scrollAreas(data=d)
 
-        if debug_mode:
-            print('out update_scrolling_window')
+        print('out update_scrolling_window')
 
     def run_simulation(self):
-        if debug_mode:
-            print('in run_simulation')
-        sim_space = create_sim_space(filename='Data.yaml')
-        sim_space.generate_image_sources()
-        sim_space.compute_rir()
-        sim_space.simulate()
+        print('in run_simulation')
+        sim_room = create_sim_room(filename='Data.yaml')
+        sim_room.generate_image_sources()
+        sim_room.compute_rir()
+        sim_room.simulate()
         with open('Data.yaml') as f:
             self.data = yaml.load(f, FullLoader)
 
         # save sound of microphone in a wav file
-        #sim_room.room.mic_array.to_wav('D:\\Simulation results\\Microphone.wav', norm=True, bitdepth=np.int16)
+        # sim_room.room.mic_array.to_wav('D:\\Simulation results\\Microphone.wav', norm=True, bitdepth=np.int16)
 
         count_mic = len(self.data['Microphones']['ID'])
         for i in range(count_mic):
             mic_id = self.data['Microphones']['ID'][i]
             wavfile.write(filename=self.data['Microphones']['microphones'][mic_id]['filepath'],
                           rate=self.data['Simulation parameters']['fs'],
-                          data=sim_space.room.mic_array.signals[i].astype(np.float32))
+                          data=sim_room.room.mic_array.signals[i].astype(np.float32))
             print('saved mic wav file in path', self.data['Microphones']['microphones'][mic_id]['filepath'])
 
 
@@ -909,9 +771,11 @@ class SourceWindow(QWidget):
         self.sources_box.setEditable(True)  # to add sources
         self.sources = []
         for i in range(self.buffer['count']):
-            s = 'Source' + str(i+1)
+            # s = 'Source' + str(self.buffer['ID'][i] + 1)
+            s = 'Source' + str(i + 1)
             self.sources.append(s)  # append names to combobox
         self.sources.append("Add Source")  # Source1, Source2, Add Source
+
         self.sources_box.addItems(self.sources)
 
         # creating line edit for source name
@@ -923,47 +787,6 @@ class SourceWindow(QWidget):
         self.remove_label = ClickableLabel('Remove')
 
         self.removed_sources = []  # ids of sources labeled 'removed'
-
-        self.frequency_box = QComboBox()
-        self.frequency_box.setEditable(True)
-        self.frequency_parameters = {}
-
-        for i in range(len(self.sources)-1):
-            s_id = self.buffer['ID'][i]
-            #s_name = self.buffer['sources'][s_id]['name']
-            s_name = self.sources[i]
-            self.frequency_parameters[s_name] = {}
-            self.frequency_parameters[s_name]['frequencies'] = []
-
-            count_freqs = len(self.buffer['sources'][s_id]['functional_form']['frequency_parameters']['freq_ids'])
-            """""
-            for j in range(count_freqs):
-                f_id = self.buffer['sources'][s_id]['functional_form']['frequency parameters']['freq_ids'][j]
-                f_name = self.buffer['sources'][s_id]['functional_form']['frequency parameters']['parameters'][f_id]['name']
-                self.frequency_parameters[s_name][f_name] = {}
-                self.frequency_parameters[s_name][f_name]['frequency'] = \
-                    self.buffer['sources'][s_id]['functional_form']['frequency parameters']['parameters'][f_id]['frequency']
-                self.frequency_parameters[s_name][f_name]['amplitude'] = \
-                    self.buffer['sources'][s_id]['functional_form']['frequency parameters']['parameters'][f_id]['amplitude']
-                self.frequency_parameters[s_name][f_name]['phase'] = \
-                    self.buffer['sources'][s_id]['functional_form']['frequency parameters']['parameters'][f_id]['phase']
-            """""
-            for j in range(count_freqs):
-                f_name = 'F'+str(j+1)
-                self.frequency_parameters[s_name]['frequencies'].append(f_name)
-                f_id = self.buffer['sources'][s_id]['functional_form']['frequency_parameters']['freq_ids'][j]
-                self.frequency_parameters[s_name][f_name] = {}
-                self.frequency_parameters[s_name][f_name]['frequency'] = \
-                    self.buffer['sources'][s_id]['functional_form']['frequency_parameters']['parameters'][f_id][
-                        'frequency']
-                self.frequency_parameters[s_name][f_name]['amplitude'] = \
-                    self.buffer['sources'][s_id]['functional_form']['frequency_parameters']['parameters'][f_id][
-                        'amplitude']
-                self.frequency_parameters[s_name][f_name]['phase'] = \
-                    self.buffer['sources'][s_id]['functional_form']['frequency_parameters']['parameters'][f_id]['phase']
-
-        if debug_mode:
-            print('self.frequency_parameters', self.frequency_parameters)
 
         # create entry-widgets for input x, y, z coordinates
         self.x_pos_line_edit = QLineEdit()
@@ -989,42 +812,43 @@ class SourceWindow(QWidget):
         self.layout1.addWidget(self.z_pos_line_edit, 2, 3)
 
         # create func form widgets
-        self.time_line_edit = QLineEdit()
-        self.time_line_edit.setPlaceholderText("Duration")
-        self.freq_name_edit = QLineEdit()
-        self.freq_name_edit.setPlaceholderText("Frequency name")
-        self.freq_line_edit = QLineEdit()
-        self.freq_line_edit.setPlaceholderText("Frequency value")
         self.amp_line_edit = QLineEdit()
         self.amp_line_edit.setPlaceholderText("Amplitude")
+        self.freq_line_edit = QLineEdit()
+        self.freq_line_edit.setPlaceholderText("Frequency")
+        self.fs_line_edit_ = QLineEdit()
+        self.fs_line_edit_.setPlaceholderText("Sampling frequency")
         self.phase_line_edit = QLineEdit()
         self.phase_line_edit.setPlaceholderText("Phase")
+        self.time_line_edit = QLineEdit()
+        self.time_line_edit.setPlaceholderText("Duration")
 
-        self.time_label = QLabel("Duration")
-        self.frequencies_label = QLabel('Frequency parameters')
-        self.frequency_name_label = QLabel('F name')
-        self.frequency_value_label = QLabel('Frequency')
-        self.remove_freq_label = ClickableLabel('Remove F')
         self.amp_label = QLabel("Amplitude")
+        self.freq_label = QLabel("Frequency")
+        self.fs_label_ = QLabel("Sampling freqyuency")
         self.phase_label = QLabel("Phase")
-
+        self.time_label = QLabel("Time")
 
         # list of functional form widgets
-        self.func_widgets = [self.time_line_edit, self.frequencies_label, self.frequency_box,
-                             self.frequency_name_label, self.freq_name_edit, self.frequency_value_label,
-                             self.freq_line_edit, self.remove_freq_label, self.amp_line_edit, self.phase_line_edit,
-                             self.amp_label, self.phase_label, self.time_label]
+        self.func_widgets = [self.amp_label, self.amp_line_edit, self.freq_label, self.freq_line_edit, self.fs_label_,
+                             self.fs_line_edit_, self.phase_label, self.phase_line_edit, self.time_label,
+                             self.time_line_edit]
 
         # create file form widgets
         self.browse_btn = QPushButton('Browse .wav file')
         self.file_lineedit = QLineEdit()
         self.t_start_label = QLabel("T start")
         self.t_end_label = QLabel('T end')
+        self.t_label = QLabel('Time')
         self.tstart_lineedit = QLineEdit()
         self.tend_lineedit = QLineEdit()
+        self.t_lineedit = QLineEdit()
+        self.fs_label = QLabel('Fs')
+        self.fs_lineedit = QLineEdit()
 
-        self.file_widgets = [self.browse_btn, self.file_lineedit, self.t_start_label, self.t_end_label,
-                             self.tstart_lineedit, self.tend_lineedit]
+        self.file_widgets = [self.browse_btn, self.file_lineedit, self.t_start_label, self.t_end_label, self.fs_label,
+                             self.tstart_lineedit, self.tend_lineedit, self.t_lineedit, self.fs_lineedit,
+                             self.t_label]
 
         # create apply/cancel/ok buttons
         self.btn_ok = QPushButton("OK")
@@ -1058,10 +882,7 @@ class SourceWindow(QWidget):
         self.sources_box.setInsertPolicy(QComboBox.InsertAfterCurrent)
 
         self.tocontinue = True  # to continue push params to data and destroy the window, or wait until you
-                                # fill the entries of the new source
-
-        self.frequency_box.currentTextChanged.connect(self.frequency_selected)
-        self.frequency_box.setInsertPolicy(QComboBox.InsertAfterCurrent)
+        # fill the entries of the new source
 
         # function/wav file selection connect to-
         # to_functional method for functional form and
@@ -1076,13 +897,14 @@ class SourceWindow(QWidget):
         self.source_name.textChanged.connect(self.get_source_name)
         self.amp_line_edit.textChanged.connect(self.get_amplitude)
         self.freq_line_edit.textChanged.connect(self.get_frequency)
-        self.freq_name_edit.textChanged.connect(self.get_frequency_name)
-        self.remove_freq_label.clicked.connect(self.remove_frequency)
+        self.fs_line_edit_.textChanged.connect(self.get_fs_func)
         self.phase_line_edit.textChanged.connect(self.get_phase)
-        self.time_line_edit.textChanged.connect(self.get_duration)
+        self.time_line_edit.textChanged.connect(self.get_time_func)
         self.file_lineedit.textChanged.connect(self.get_file)
         self.tstart_lineedit.textChanged.connect(self.get_start_time)
         self.tend_lineedit.textChanged.connect(self.get_end_time)
+        self.t_lineedit.textChanged.connect(self.get_time_fileform)
+        self.fs_lineedit.textChanged.connect(self.get_fs_fileform)
 
         self.x_pos_line_edit.textChanged.connect(self.get_x)
         self.y_pos_line_edit.textChanged.connect(self.get_y)
@@ -1097,230 +919,61 @@ class SourceWindow(QWidget):
         self.layout.addLayout(self.layout5, 2, 0)
         self.setLayout(self.layout)
 
-
-    def initialize_source_window(self):
-        self.layout_form.addWidget(self.time_label, 0, 0)
-        self.layout_form.addWidget(self.time_line_edit, 0, 1)
-        self.layout_form.addWidget(self.frequencies_label, 1, 0)
-        self.layout_form.addWidget(self.frequency_box, 1, 1)
-        self.layout_form.addWidget(self.frequency_name_label, 1, 2)
-        self.layout_form.addWidget(self.freq_name_edit, 1, 3)
-        self.layout_form.addWidget(self.remove_freq_label, 1, 4)
-        self.layout_form.addWidget(self.frequency_value_label, 2, 0)
-        self.layout_form.addWidget(self.freq_line_edit, 2, 1)
-        self.layout_form.addWidget(self.amp_label, 2, 2)
-        self.layout_form.addWidget(self.amp_line_edit, 2, 3)
-        self.layout_form.addWidget(self.phase_label, 3, 0)
-        self.layout_form.addWidget(self.phase_line_edit, 3, 1)
-
-        self.layout_form.addWidget(self.browse_btn, 0, 0)
-        self.layout_form.addWidget(self.file_lineedit, 0, 1)
-        self.layout_form.addWidget(self.t_start_label, 1, 0)
-        self.layout_form.addWidget(self.tstart_lineedit, 1, 1)
-        self.layout_form.addWidget(self.t_end_label, 1, 2)
-        self.layout_form.addWidget(self.tend_lineedit, 1, 3)
-
-        for i in range(len(self.file_widgets)):
-            self.file_widgets[i].hide()
-
-        for i in range(len(self.func_widgets)):
-            self.func_widgets[i].hide()
-
-    def to_functional(self, selected):
-        if debug_mode:
-            print('in to functional func')
-        if selected:
-            for i in range(len(self.file_widgets)):
-                self.file_widgets[i].hide()
-            for i in range(len(self.func_widgets)):
-                self.func_widgets[i].show()
-
-            s_ind = self.sources_box.currentIndex()
-            id = self.buffer['ID'][s_ind]
-
-            self.buffer['sources'][id]['form'] = 0
-
-    def to_wav_file(self, selected):
-        if debug_mode:
-            print('to_wav_file func')
-        if selected:
-            for i in range(len(self.func_widgets)):
-                self.func_widgets[i].hide()
-            for i in range(len(self.file_widgets)):
-                self.file_widgets[i].show()
-            s_ind = self.sources_box.currentIndex()
-            id = self.buffer['ID'][s_ind]
-            self.buffer['sources'][id]['form'] = 1  # source is wav form(1-file form)
-
-    def filling_entries(self, s: str, data=None):
-        if debug_mode:
-            print('in feeling_entries func for', s)
-
-        if data is None:
-            data = self.buffer
-
-        ind = self.sources.index(s)
-        if debug_mode:
-            print('source ind-', ind)
-        s_id = data['ID'][ind]
-
-        func_s = data['sources'][s_id]['functional_form']
-        if debug_mode:
-            print('functional form of source', s, '-', func_s)
-        file_s = data['sources'][s_id]['wav file']
-
-        if func_s['muted'] == 1 or file_s['muted'] == 1:
-            self.mute_box.setChecked(True)
-        else:
-            self.mute_box.setChecked(False)
-
-        self.source_name.setText(data['sources'][s_id]['name'])
-        self.x_pos_line_edit.setText(str(func_s['x']))
-        self.y_pos_line_edit.setText(str(func_s['y']))
-        self.z_pos_line_edit.setText(str(func_s['z']))
-
-        if data['sources'][s_id]['form'] == 0:  # functional form
-            self.func_radiobtn.setChecked(True)
-            self.to_functional(True)
-            self.frequency_box.clear()
-            self.frequency_box.addItems(self.frequency_parameters[s]['frequencies'])
-            self.frequency_box.addItem('Add F')
-            #fill first frequency
-            first_freq_id = func_s['frequency_parameters']['freq_ids'][0]
-            self.filling_freq_parameters(s_id=s_id, f_id=first_freq_id, data=data)
-            if debug_mode:
-                print('first_freq_id', first_freq_id)
-            self.frequency_box.setCurrentIndex(0)
-            if debug_mode:
-                print('frequency_box current index', self.frequency_box.currentIndex())
-            self.file_radiobtn.setChecked(False)
-            if debug_mode:
-                print('self.frequency_parameters[s]', self.frequency_parameters[s])
-        else:  # file form
-            self.file_radiobtn.setChecked(True)
-            self.to_wav_file(True)
-            self.func_radiobtn.setChecked(False)
-
-        if s_id in self.removed_sources:
-            self.remove_label.setText('Removed')
-        else:
-            self.remove_label.setText('Remove')
-
-        self.time_line_edit.setText(str(func_s['duration']))
-
-        self.file_lineedit.setText(file_s['filename'])
-        self.tstart_lineedit.setText(str(file_s['t_start']))
-        self.tend_lineedit.setText(str(file_s['t_end']))
-        self.first_call = False
-
-    def filling_freq_parameters(self, s_id: int, f_id: int, data=None):
-        if debug_mode:
-            print('in filling_freq_parameters for freq with id-', f_id)
-
-        if data is None:
-            data = self.buffer
-
-        if debug_mode:
-            print('freq name', data['sources'][s_id]['functional_form']['frequency_parameters']
-            ['parameters'][f_id]['name'])
-        self.freq_name_edit.setText(str(data['sources'][s_id]['functional_form']['frequency_parameters']
-                                        ['parameters'][f_id]['name']))
-        self.freq_line_edit.setText(str(data['sources'][s_id]['functional_form']['frequency_parameters']
-                                        ['parameters'][f_id]['frequency']))
-        self.amp_line_edit.setText(str(data['sources'][s_id]['functional_form']['frequency_parameters']
-                                        ['parameters'][f_id]['amplitude']))
-        self.phase_line_edit.setText(str(data['sources'][s_id]['functional_form']['frequency_parameters']
-                                        ['parameters'][f_id]['phase']))
-        if debug_mode:
-            print('done 2')
-
     def get_source_name(self, new_name: str):
-        if debug_mode:
-            print('in get_source_name')
+        print('in get_source_name')
         s_ind = self.sources_box.currentIndex()
         id = self.buffer['ID'][s_ind]
         self.buffer['sources'][id]['name'] = new_name
 
-    def get_frequency_name(self, new_name: str):
-        if debug_mode:
-            print('in get_frequency_name')
-        s_ind = self.sources_box.currentIndex()
-        s_id = self.buffer['ID'][s_ind]
-        f_ind = self.frequency_box.currentIndex()
-        if debug_mode:
-            print('f_ind', f_ind)
-        f_id = self.buffer['sources'][s_id]['functional_form']['frequency_parameters']['freq_ids'][f_ind]
-        if debug_mode:
-            print('f_id', f_id)
-
-        self.buffer['sources'][s_id]['functional_form']['frequency_parameters']['parameters'][f_id]['name'] = new_name
-
     # methods connected with widgets
     def get_amplitude(self, amplitude: str):
-        if debug_mode:
-            print('in get amplitude func')
+        print('in get amplitude func')
         s_ind = self.sources_box.currentIndex()
-        f_ind = self.frequency_box.currentIndex()
         if amplitude == "":
             amplitude = 0
 
-        s_id = self.buffer['ID'][s_ind]
-        f_id = self.buffer['sources'][s_id]['functional_form']['frequency_parameters']['freq_ids'][f_ind]
-        self.buffer['sources'][s_id]['functional_form']['frequency_parameters']['parameters'][f_id]['amplitude'] = int(amplitude)
-        s_name = self.sources[s_ind]
-        f_name = self.frequency_parameters[s_name]['frequencies'][f_ind]
-        if debug_mode:
-            print('source name-', s_name, 'f_name-', f_name)
-            print('amplitude', amplitude)
-
-        self.frequency_parameters[s_name][f_name]['amplitude'] = int(amplitude)
+        id = self.buffer['ID'][s_ind]
+        self.buffer['sources'][id]['functional_form']['amplitude'] = int(amplitude)
 
     def get_frequency(self, freq: str):
-        if debug_mode:
-            print('in get_frequency func ')
+        print('in get_frequency func ')
         s_ind = self.sources_box.currentIndex()
-        f_ind = self.frequency_box.currentIndex()
         if freq == "":
             freq = 0
 
-        s_id = self.buffer['ID'][s_ind]
-        f_id = self.buffer['sources'][s_id]['functional_form']['frequency_parameters']['freq_ids'][f_ind]
-        self.buffer['sources'][s_id]['functional_form']['frequency_parameters']['parameters'][f_id]['frequency'] = int(freq)
-        s_name = self.sources[s_ind]
-        f_name = self.frequency_parameters[s_name]['frequencies'][f_ind]
-        self.frequency_parameters[s_name][f_name]['frequency'] = int(freq)
+        id = self.buffer['ID'][s_ind]
+        self.buffer['sources'][id]['functional_form']['frequency'] = int(freq)
+
+    def get_fs_func(self, fs: str):
+        print('in get_fs_func func ')
+        s_ind = self.sources_box.currentIndex()
+        if fs == "":
+            fs = 0
+
+        id = self.buffer['ID'][s_ind]
+        self.buffer['sources'][id]['functional_form']['fs'] = int(fs)
 
     def get_phase(self, ph: str):
-        if debug_mode:
-            print('in get phase func')
+        print('in get_phase func')
         s_ind = self.sources_box.currentIndex()
-        f_ind = self.frequency_box.currentIndex()
         if ph == "":
             ph = 0
 
-        s_id = self.buffer['ID'][s_ind]
-        f_id = self.buffer['sources'][s_id]['functional_form']['frequency_parameters']['freq_ids'][f_ind]
-        self.buffer['sources'][s_id]['functional_form']['frequency_parameters']['parameters'][f_id]['phase'] = int(ph)
-        s_name = self.sources[s_ind]
-        f_name = self.frequency_parameters[s_name]['frequencies'][f_ind]
-        if debug_mode:
-            print('s name', s_name, 'f_name', f_name)
-        self.frequency_parameters[s_name][f_name]['phase'] = int(ph)
+        id = self.buffer['ID'][s_ind]
+        self.buffer['sources'][id]['functional_form']['phase'] = int(ph)
 
-    def get_duration(self, duration: str):
-        if debug_mode:
-            print('in get_duration_func ')
+    def get_time_func(self, time: str):
+        print('in get_time_func ')
         s_ind = self.sources_box.currentIndex()
-        if duration == "":
-            duration = 0
+        if time == "":
+            time = 0
 
         id = self.buffer['ID'][s_ind]
-        self.buffer['sources'][id]['functional_form']['duration'] = int(duration)
+        self.buffer['sources'][id]['functional_form']['time'] = int(time)
 
     # ---- file form ---
     def get_file(self, file: str):
-        if debug_mode:
-            print('in get_file func')
+        print('in get_file func')
         s_ind = self.sources_box.currentIndex()
         if file == "":
             file = " "
@@ -1329,8 +982,7 @@ class SourceWindow(QWidget):
         self.buffer['sources'][id]['wav file']['filename'] = str(file)
 
     def get_start_time(self, stime: str):
-        if debug_mode:
-            print('in get_start_time func ')
+        print('in get_start_time func ')
         s_ind = self.sources_box.currentIndex()
         if stime == "":
             stime = 0
@@ -1346,9 +998,24 @@ class SourceWindow(QWidget):
         id = self.buffer['ID'][s_ind]
         self.buffer['sources'][id]['wav file']['t_end'] = int(etime)
 
+    def get_time_fileform(self, time: str):
+        print('in get_time_fileform func')
+        s_ind = self.sources_box.currentIndex()
+        if time == "":
+            time = 0
+
+        id = self.buffer['ID'][s_ind]
+        self.buffer['sources'][id]['wav file']['time'] = int(time)
+
+    def get_fs_fileform(self, fs: str):
+        s_ind = self.sources_box.currentIndex()
+        if fs == "":
+            fs = 0
+        id = self.buffer['ID'][s_ind]
+        self.buffer['sources'][id]['wav file']['fs'] = int(fs)
+
     def get_x(self, x: str):
-        if debug_mode:
-            print("in get coordinate X")
+        print("in get coordinate X")
         s_ind = self.sources_box.currentIndex()
         if x == "":
             x = 0
@@ -1358,8 +1025,7 @@ class SourceWindow(QWidget):
         self.buffer['sources'][id]['functional_form']['x'] = int(x)
 
     def get_y(self, y: str):
-        if debug_mode:
-            print("in get coordinate Y")
+        print("in get coordinate Y")
         s_ind = self.sources_box.currentIndex()
         if y == "":
             y = 0
@@ -1368,8 +1034,7 @@ class SourceWindow(QWidget):
         self.buffer['sources'][id]['functional_form']['y'] = int(y)
 
     def get_z(self, z: str):
-        if debug_mode:
-            print("in get coordinate Z")
+        print("in get coordinate Z")
         s_ind = self.sources_box.currentIndex()
         if z == "":
             z = 0
@@ -1378,35 +1043,29 @@ class SourceWindow(QWidget):
         self.buffer['sources'][id]['functional_form']['z'] = int(z)
 
     def source_index_changed(self, index):
-        if debug_mode:
-            print("Source", index)
+        print("Source", index)
         self.sources_box.setCurrentIndex(index)
 
     def source_selected_add(self, current_ind: int, data=None):
-        if debug_mode:
-            print('in source_selected_add func')
+        print('in source_selected_add func')
         if data == None:
             data = self.buffer
         if current_ind > 0:
-            prev_source_ind = int(self.sources[current_ind-1][6:])  # the index, that is wrote after Source, eg.Source3
-            new_source_index = prev_source_ind+1
+            prev_source_ind = int(
+                self.sources[current_ind - 1][6:])  # the index, that is wrote after Source, eg.Source3
+            new_source_index = prev_source_ind + 1
         else:
             new_source_index = current_ind + 1
 
         new_source_name = 'Source' + str(new_source_index)
         new_source_id = data['index of ids'] + 1
 
-
         self.add_new_source(new_source_name, new_source_id)
         self.sources.insert(current_ind, new_source_name)
+        # self.sources_box.setCurrentText(new_source_name)
         self.sources_box.insertItem(current_ind, new_source_name)
         self.sources_box.setCurrentIndex(current_ind)
-        if debug_mode:
-            print('added source ', self.sources)
-        self.frequency_box.clear()
-        self.frequency_box.addItems(self.frequency_parameters[new_source_name]['frequencies'])
-        self.frequency_box.addItem('Add F')
-        self.frequency_box.setCurrentIndex(0)
+        print('added source ', self.sources)
 
     def source_selected(self, s: str, d=None):
         print('current text changed signal - source_selected func')
@@ -1416,13 +1075,11 @@ class SourceWindow(QWidget):
             self.filling_entries(s=s, data=d)
         else:
             current_ind = d['count']
-            if debug_mode:
-                print(' current_ind ',  current_ind)
+            print(' current_ind ', current_ind)
             self.source_selected_add(current_ind=current_ind, data=d)
 
     def add_new_source(self, new_source_name: str, new_source_id: int):
-        if debug_mode:
-            print('in add_new_source()')
+        print('in add_new_source()')
         self.buffer['ID'].append(new_source_id)
         self.buffer['count'] = len(self.buffer['ID'])
         self.buffer['index of ids'] += 1
@@ -1433,22 +1090,15 @@ class SourceWindow(QWidget):
 
         self.buffer['sources'][new_source_id]['functional_form'] = {}
         self.buffer['sources'][new_source_id]['wav file'] = {}
-
+        self.buffer['sources'][new_source_id]['functional_form']['amplitude'] = 0
+        self.buffer['sources'][new_source_id]['functional_form']['frequency'] = 0
+        self.buffer['sources'][new_source_id]['functional_form']['fs'] = 8000
+        self.buffer['sources'][new_source_id]['functional_form']['phase'] = 0
+        self.buffer['sources'][new_source_id]['functional_form']['time'] = 0
         self.buffer['sources'][new_source_id]['functional_form']['x'] = 0
         self.buffer['sources'][new_source_id]['functional_form']['y'] = 0
         self.buffer['sources'][new_source_id]['functional_form']['z'] = 0
         self.buffer['sources'][new_source_id]['functional_form']['muted'] = 0
-        self.buffer['sources'][new_source_id]['functional_form']['fs'] = 8000
-        self.buffer['sources'][new_source_id]['functional_form']['duration'] = 0
-        self.buffer['sources'][new_source_id]['functional_form']['frequency_parameters'] = {}
-        self.buffer['sources'][new_source_id]['functional_form']['frequency_parameters']['freq_ids'] = [0]
-        self.buffer['sources'][new_source_id]['functional_form']['frequency_parameters']['index'] = 0
-        self.buffer['sources'][new_source_id]['functional_form']['frequency_parameters']['parameters'] = {}
-        self.buffer['sources'][new_source_id]['functional_form']['frequency_parameters']['parameters'][0] = {}
-        self.buffer['sources'][new_source_id]['functional_form']['frequency_parameters']['parameters'][0]['name'] = 'F1'
-        self.buffer['sources'][new_source_id]['functional_form']['frequency_parameters']['parameters'][0]['frequency'] = 0
-        self.buffer['sources'][new_source_id]['functional_form']['frequency_parameters']['parameters'][0]['amplitude'] = 0
-        self.buffer['sources'][new_source_id]['functional_form']['frequency_parameters']['parameters'][0]['phase'] = 0
 
         self.buffer['sources'][new_source_id]['wav file']['filename'] = ""
         self.buffer['sources'][new_source_id]['wav file']['fs'] = 8000
@@ -1460,132 +1110,28 @@ class SourceWindow(QWidget):
         self.buffer['sources'][new_source_id]['wav file']['z'] = 0
         self.buffer['sources'][new_source_id]['wav file']['muted'] = 0
 
-        self.frequency_parameters[new_source_name] = {}
-        self.frequency_parameters[new_source_name]['frequencies'] = ['F1']
-        self.frequency_parameters[new_source_name]['F1'] = {}
-        self.frequency_parameters[new_source_name]['F1']['frequency'] = 0
-        self.frequency_parameters[new_source_name]['F1']['amplitude'] = 0
-        self.frequency_parameters[new_source_name]['F1']['phase'] = 0
+    def to_functional(self, selected):
+        if selected:
+            for i in range(len(self.file_widgets)):
+                self.file_widgets[i].hide()
+            for i in range(len(self.func_widgets)):
+                self.func_widgets[i].show()
 
+            s_ind = self.sources_box.currentIndex()
+            id = self.buffer['ID'][s_ind]
 
-    def frequency_index_changed(self, index):
-        if debug_mode:
-            print('in frequency_index_changed')
-            print("F", index)
-        self.frequency_box.setCurrentIndex(index)
+            self.buffer['sources'][id]['form'] = 0
 
-    def freq_selected_add(self, s_id: int, current_ind: int, data=None):
-        if debug_mode:
-            print('in freq_selected_add func')
-            print('current_ind', current_ind)
-        if data == None:
-            data = self.buffer
-        s_ind = data['ID'].index(s_id)
-        s_name = self.sources[s_ind]
-        if current_ind > 0:
-            prev_freq_ind = int(self.frequency_parameters[s_name]['frequencies'][current_ind-1][1:])  # the index, that is wrote after F, eg.F1
-            new_freq_index = prev_freq_ind+1
-        else:
-            new_freq_index = current_ind + 1
-
-        new_freq_name = 'F' + str(new_freq_index)
-
-        self.add_new_freq(s_id, new_freq_name)
-        self.frequency_parameters[s_name]['frequencies'].insert(current_ind, new_freq_name)
-        self.frequency_parameters[s_name][new_freq_name] = {}
-        self.frequency_parameters[s_name][new_freq_name]['frequency'] = 0
-        self.frequency_parameters[s_name][new_freq_name]['amplitude'] = 0
-        self.frequency_parameters[s_name][new_freq_name]['phase'] = 0
-        if debug_mode:
-            print('self.frequency_parameters[s_name]', self.frequency_parameters[s_name])
-
-        self.frequency_box.insertItem(current_ind, new_freq_name)
-        if debug_mode:
-            print('after insert item to freq box')
-            print('current_ind', current_ind)
-        self.frequency_box.setCurrentIndex(current_ind)
-        if debug_mode:
-            print('added freq ', self.frequency_parameters)
-
-    def add_new_freq(self, s_id: int, new_freq_name: str):
-        if debug_mode:
-            print('in add_new_freq')
-        index_of_id = self.buffer['sources'][s_id]['functional_form']['frequency_parameters']['index'] + 1
-        if debug_mode:
-            print('new_freq id', index_of_id)
-            print('s_id in add_new_freq', s_id)
-        self.buffer['sources'][s_id]['functional_form']['frequency_parameters']['index'] = index_of_id
-        self.buffer['sources'][s_id]['functional_form']['frequency_parameters']['freq_ids'].append(index_of_id)
-        self.buffer['sources'][s_id]['functional_form']['frequency_parameters']['parameters'][index_of_id] = {}
-        self.buffer['sources'][s_id]['functional_form']['frequency_parameters']['parameters'][index_of_id]['name'] = new_freq_name
-        self.buffer['sources'][s_id]['functional_form']['frequency_parameters']['parameters'][index_of_id]['frequency'] = 0
-        self.buffer['sources'][s_id]['functional_form']['frequency_parameters']['parameters'][index_of_id]['amplitude'] = 0
-        self.buffer['sources'][s_id]['functional_form']['frequency_parameters']['parameters'][index_of_id]['phase'] = 0
-
-        if debug_mode:
-            print('self.buffer[sources][s_id][functional_form][frequency_parameters]', self.buffer['sources'][s_id]['functional_form']['frequency_parameters'])
-
-    def frequency_selected(self, f: str, d=None):
-        if debug_mode:
-            print('frequency changed signal - frequency_selected func')
-        if d == None:
-            d = self.buffer
-        if f == '':
-            return
-        s_ind = self.sources_box.currentIndex()
-        s_name = self.sources[s_ind]
-        s_id = d['ID'][s_ind]
-        if debug_mode:
-            print('f', f, 's_id', s_id, 's_name', s_name)
-            print('self.frequency_parameters[s_name]', self.frequency_parameters[s_name])
-        #f_ind = self.frequency_parameters[s_name]['frequencies'].index(f)
-        #f_id = d['sources'][s_id]['functional_form']['frequency_parameters']['freq_ids'][f_ind]
-
-        if f != 'Add F':
-            f_ind = self.frequency_parameters[s_name]['frequencies'].index(f)
-            if debug_mode:
-                print('f_ind', f_ind)
-            f_id = d['sources'][s_id]['functional_form']['frequency_parameters']['freq_ids'][f_ind]
-            if debug_mode:
-                print('f', f, 'f_ind', f_ind, 'f_id', f_id)
-            self.filling_freq_parameters(s_id=s_id, f_id=f_id, data=d)
-            if debug_mode:
-                print('filled freq parameters')
-        else:
-            current_ind = len(d['sources'][s_id]['functional_form']['frequency_parameters']['freq_ids'])
-            if debug_mode:
-                print(' current_ind ', current_ind)
-            self.freq_selected_add(s_id=s_id, current_ind=current_ind, data=d)
-
-    def remove_frequency(self):
-        if debug_mode:
-            print('in remove_frequency')
-        s_ind = self.sources_box.currentIndex()
-        f_ind = self.frequency_box.currentIndex()
-        s_name = self.sources[s_ind]
-        s_id = self.buffer['ID'][s_ind]
-        f_id = self.buffer['sources'][s_id]['functional_form']['frequency_parameters']['freq_ids'][f_ind]
-        f_name = self.frequency_parameters[s_name]['frequencies'][f_ind]
-
-        if debug_mode:
-            print('removing frq:', f_name, 'of source: ', s_name)
-
-        del self.buffer['sources'][s_id]['functional_form']['frequency_parameters']['freq_ids'][f_ind]
-        del self.buffer['sources'][s_id]['functional_form']['frequency_parameters']['parameters'][f_id]
-
-        if len(self.frequency_parameters[s_name]['frequencies']) >= 2:
-            if f_ind == len(self.frequency_parameters[s_name]['frequencies']) - 1:
-                self.frequency_box.setCurrentIndex(f_ind - 1)
-            del self.frequency_parameters[s_name]['frequencies'][f_ind]
-            self.frequency_box.removeItem(f_ind)
-        else:
-            del self.frequency_parameters[s_name]['frequencies'][f_ind]
-            self.frequency_box.removeItem(f_ind)
-            self.frequency_box.setCurrentIndex(f_ind)
-
-        del self.frequency_parameters[s_name][f_name]
-        if debug_mode:
-            print('self.frequency_parameters-', self.frequency_parameters)
+    def to_wav_file(self, selected):
+        print('to_wav_file func')
+        if selected:
+            for i in range(len(self.func_widgets)):
+                self.func_widgets[i].hide()
+            for i in range(len(self.file_widgets)):
+                self.file_widgets[i].show()
+            s_ind = self.sources_box.currentIndex()
+            id = self.buffer['ID'][s_ind]
+            self.buffer['sources'][id]['form'] = 1  # source is wav form(1-file form)
 
     def browse_file(self):
         filename, _ = QtWidgets.QFileDialog.getOpenFileName(self, 'Single File', QtCore.QDir.rootPath(), '*.wav')
@@ -1603,8 +1149,7 @@ class SourceWindow(QWidget):
             self.buffer['sources'][id]['wav file']['muted'] = 0
 
     def remove_source_action(self):
-        if debug_mode:
-            print('in remove_source_action()')
+        print('in remove_source_action()')
         s_ind = self.sources_box.currentIndex()
         s_id = self.buffer['ID'][s_ind]
 
@@ -1615,54 +1160,123 @@ class SourceWindow(QWidget):
             self.remove_label.setText('Remove')
             self.removed_sources.remove(s_id)
 
-        if debug_mode:
-            print(" removed_sources- ", self.removed_sources)
+        print(" removed_sources- ", self.removed_sources)
 
     def remove_sources_from_buffer(self, buffer=None):
-        if debug_mode:
-            print("in remove_sources_from_buffer func ")
+        print("in remove_sources_from_buffer func ")
         if buffer is None:
             buffer = self.buffer
         if len(self.removed_sources) != 0:
             for j in range(len(self.removed_sources)):
                 s_id = self.removed_sources[j]
-                s_name = buffer['sources'][s_id]['name']
                 s_ind = buffer['ID'].index(s_id)
-                if debug_mode:
-                    print('removed', self.sources[s_ind], 'from buffer')
+                print('removed', self.sources[s_ind], 'from buffer')
                 buffer['ID'].remove(s_id)
                 del buffer['sources'][s_id]
                 buffer['count'] = len(buffer['ID'])
-                if debug_mode:
-                    print(len(self.sources))
+                print(len(self.sources))
                 if len(self.sources) >= 3:
                     if s_ind == len(self.sources) - 2:
                         self.sources_box.setCurrentIndex(s_ind - 1)
                         del self.sources[s_ind]
                         self.sources_box.removeItem(s_ind)
+                        del self.removed_sources[j]
                     else:
+                        del self.removed_sources[j]
                         del self.sources[s_ind]
                         self.sources_box.removeItem(s_ind)
                 else:
                     del self.sources[s_ind]
-                    if debug_mode:
-                        print('removed Source in index', s_ind, 'from sources')
+                    print('removed Source in index', s_ind, 'from sources')
                     self.sources_box.removeItem(s_ind)
                     self.sources_box.setCurrentIndex(s_ind)
-                del self.frequency_parameters[s_name]
+                    del self.removed_sources[j]
 
-            self.removed_sources.clear()
+        print('buffer ids will be - ', buffer['ID'])
+        print('buffer sources will be - ', buffer['sources'])
 
-        if debug_mode:
-            print('buffer ids will be - ', buffer['ID'])
-            print('buffer sources will be - ', buffer['sources'])
+    def initialize_source_window(self):
+        self.layout_form.addWidget(self.amp_label, 0, 0)
+        self.layout_form.addWidget(self.amp_line_edit, 0, 1)
+        self.layout_form.addWidget(self.freq_label, 1, 0)
+        self.layout_form.addWidget(self.freq_line_edit, 1, 1)
+        self.layout_form.addWidget(self.fs_label_, 2, 0)
+        self.layout_form.addWidget(self.fs_line_edit_, 2, 1)
+        self.layout_form.addWidget(self.phase_label, 0, 2)
+        self.layout_form.addWidget(self.phase_line_edit, 0, 3)
+        self.layout_form.addWidget(self.time_label, 1, 2)
+        self.layout_form.addWidget(self.time_line_edit, 1, 3)
+
+        self.layout_form.addWidget(self.browse_btn, 0, 0)
+        self.layout_form.addWidget(self.file_lineedit, 0, 1)
+        self.layout_form.addWidget(self.t_start_label, 1, 0)
+        self.layout_form.addWidget(self.tstart_lineedit, 1, 1)
+        self.layout_form.addWidget(self.t_end_label, 1, 2)
+        self.layout_form.addWidget(self.tend_lineedit, 1, 3)
+        self.layout_form.addWidget(self.t_label, 1, 4)
+        self.layout_form.addWidget(self.t_lineedit, 1, 5)
+        self.layout_form.addWidget(self.fs_label, 2, 0)
+        self.layout_form.addWidget(self.fs_lineedit, 2, 1)
+
+        for i in range(len(self.file_widgets)):
+            self.file_widgets[i].hide()
+
+        for i in range(len(self.func_widgets)):
+            self.func_widgets[i].hide()
+
+    def filling_entries(self, s: str, data=None):
+        print('in feeling_entries func for', s)
+
+        if data is None:
+            data = self.buffer
+
+        ind = self.sources.index(s)
+        print('ind-', ind)
+        s_id = data['ID'][ind]
+
+        func_s = data['sources'][s_id]['functional_form']
+        file_s = data['sources'][s_id]['wav file']
+
+        if func_s['muted'] == 1 or file_s['muted'] == 1:
+            self.mute_box.setChecked(True)
+        else:
+            self.mute_box.setChecked(False)
+
+        self.source_name.setText(data['sources'][s_id]['name'])
+        self.x_pos_line_edit.setText(str(func_s['x']))
+        self.y_pos_line_edit.setText(str(func_s['y']))
+        self.z_pos_line_edit.setText(str(func_s['z']))
+
+        if data['sources'][s_id]['form'] == 0:  # functional form
+            self.func_radiobtn.setChecked(True)
+            self.to_functional(True)
+            self.file_radiobtn.setChecked(False)
+        else:  # file form
+            self.file_radiobtn.setChecked(True)
+            self.to_wav_file(True)
+            self.func_radiobtn.setChecked(False)
+
+        if s_id in self.removed_sources:
+            self.remove_label.setText('Removed')
+        else:
+            self.remove_label.setText('Remove')
+
+        self.amp_line_edit.setText(str(func_s['amplitude']))
+        self.fs_line_edit_.setText(str(func_s['fs']))
+        self.freq_line_edit.setText(str(func_s['frequency']))
+        self.phase_line_edit.setText(str(func_s['phase']))
+        self.time_line_edit.setText(str(func_s['time']))
+        self.file_lineedit.setText(file_s['filename'])
+        self.tstart_lineedit.setText(str(file_s['t_start']))
+        self.tend_lineedit.setText(str(file_s['t_end']))
+        self.t_lineedit.setText(str(file_s['time']))
+        self.fs_lineedit.setText(str(file_s['fs']))
 
     # connected to ok button, for pushing values to main data, and hide window
     def push_parameters_to_data_and_destroy(self):
-        if debug_mode:
-            print('in ok button func')
+        print('in ok button func')
         self.refresh_parameters()
-        if self.tocontinue:
+        if self.tocontinue == True:
 
             with open('Data.yaml') as f:
                 d = yaml.load(f, Loader=FullLoader)
@@ -1679,10 +1293,8 @@ class SourceWindow(QWidget):
 
     # connected to apply button, for updating buffer data
     def refresh_parameters(self):
-        if debug_mode:
-            print('in apply button function')
-        # self.hide()
-        if len(self.removed_sources) == len(self.sources)-1:
+        print('in apply button function')
+        if len(self.removed_sources) == len(self.sources) - 1:
             self.remove_sources_from_buffer()
             self.tocontinue = False
         else:
@@ -1696,17 +1308,17 @@ class SourceWindow(QWidget):
                 yaml.dump(d, f)
 
             if self.parent:
-                self.parent.update_scrolling_window()
-                self.parent.canvas.update(file='buffer_data.yaml')
+                self.parent.update_(file='buffer_data.yaml')
 
 
+"""""
 class MessageWindow(QWidget):
-    def __init__(self, obj="", object_index_to_remove=0, parent=None):
+    def __init__(self, source_to_remove=0, parent=None):
         super(MessageWindow, self).__init__()
+        #self.setWindowTitle("Warning!!!")
         self.setGeometry(150, 80, 150, 100)
-        self.object = obj
         self.parent = parent
-        self.object_index_to_remove = object_index_to_remove
+        self.source_to_remove = source_to_remove
 
         self.layout = QVBoxLayout()
         self.ok_cancel_layout = QHBoxLayout()
@@ -1730,8 +1342,45 @@ class MessageWindow(QWidget):
 
 
     def refresh_mainwindow(self):
-        if debug_mode:
-            print('in refresh_mainwindow func')
+        print('in refresh_mainwindow func')
+
+        self.hide()
+        if self.parent:
+            self.parent.delete_source_from_Sources_window(self.source_to_remove)
+"""""
+
+
+class MessageWindow(QWidget):
+    def __init__(self, object="", object_index_to_remove=0, parent=None):
+        super(MessageWindow, self).__init__()
+        # self.setWindowTitle("Warning!!!")
+        self.setGeometry(150, 80, 150, 100)
+        self.object = object
+        self.parent = parent
+        self.object_index_to_remove = object_index_to_remove
+
+        self.layout = QVBoxLayout()
+        self.ok_cancel_layout = QHBoxLayout()
+
+        self.layout.addWidget(QLabel('Do you want to remove?'))
+
+        self.btn_ok = QPushButton("Accept")
+        self.btn_ok.setStyleSheet("color: white;")
+        self.btn_ok.setStyleSheet("Background-color: grey;")
+        self.btn_cancel = QPushButton("Cancel")
+        self.btn_cancel.setStyleSheet("Background-color: grey;")
+
+        self.ok_cancel_layout.addWidget(self.btn_ok)
+        self.ok_cancel_layout.addWidget(self.btn_cancel)
+        self.layout.addLayout(self.ok_cancel_layout)
+
+        self.btn_ok.clicked.connect(self.refresh_mainwindow)
+        self.btn_cancel.clicked.connect(self.hide)
+
+        self.setLayout(self.layout)
+
+    def refresh_mainwindow(self):
+        print('in refresh_mainwindow func')
 
         self.hide()
         if self.parent:
@@ -1780,7 +1429,7 @@ class MicrophoneWindow(QWidget):
         self.mute_box = QCheckBox("Mute")
         self.mute_box.setCheckable(True)
         self.remove_label = ClickableLabel('Remove')
-        self.removed_mics = []   # ids of mics labeled 'removed'
+        self.removed_mics = []  # ids of mics labeled 'removed'
 
         self.position_label = QLabel("Position")
         self.x_pos_line_edit = QLineEdit()
@@ -1806,7 +1455,7 @@ class MicrophoneWindow(QWidget):
         self.pause_btn = QPushButton("Pause")
         self.stop_btn = QPushButton("Stop")
         self.filepath_line_edit = QLineEdit()
-        self.filepath_line_edit.setPlaceholderText("file path")
+        # self.filepath_line_edit.setPlaceholderText("file path")
 
         first_mic_id = self.buffer['ID'][0]
         self.filepath_line_edit.setText(self.buffer['microphones'][first_mic_id]['filepath'])
@@ -1827,9 +1476,9 @@ class MicrophoneWindow(QWidget):
         # initialize entries with buffer values for Microphone1
         # after creating all widgets, initialize them with buffer values
 
-        #self.initialize_mic_window()
+        # self.initialize_mic_window()
 
-        #if self.buffer['count'] != 0:
+        # if self.buffer['count'] != 0:
         self.mics_box.setCurrentIndex(first_mic_id)
         self.mic_name.setText(self.mics[first_mic_id])
         self.filling_entries(self.mics[first_mic_id])
@@ -1840,15 +1489,14 @@ class MicrophoneWindow(QWidget):
         # Insert before current item(before add source item) - for adding source
         self.mics_box.setInsertPolicy(QComboBox.InsertAfterCurrent)
 
-        self.tocontinue = True    # to continue push params to data and destroy the window, or wait until you
-                                   # fill the entries of the new microphone
+        self.tocontinue = True  # to continue push params to data and destroy the window, or wait until you
+        # fill the entries of the new microphone
 
         # connect widgets with methods
         self.x_pos_line_edit.textChanged.connect(self.get_x)
         self.y_pos_line_edit.textChanged.connect(self.get_y)
         self.z_pos_line_edit.textChanged.connect(self.get_z)
         self.mic_name.textChanged.connect(self.get_mic_name)
-        self.filepath_line_edit.textChanged.connect(self.get_mic_filepath)
         self.mute_box.stateChanged.connect(self.change_mute_state)
         self.remove_label.clicked.connect(self.remove_mic_action)
 
@@ -1865,17 +1513,14 @@ class MicrophoneWindow(QWidget):
         layout.addLayout(layout3)
         self.setLayout(layout)
 
-
     def filling_entries(self, m: str, data=None):
-        if debug_mode:
-            print('in feeling_entries func for', m)
+        print('in feeling_entries func for', m)
 
         if data is None:
             data = self.buffer
 
         ind = self.mics.index(m)
-        if debug_mode:
-            print('ind-', ind)
+        print('ind-', ind)
         m_id = data['ID'][ind]
 
         if data['microphones'][m_id]['parameters']['muted'] == 1:
@@ -1896,8 +1541,7 @@ class MicrophoneWindow(QWidget):
 
     # method for taking tha value of x coordinate from entry, and save it in buffer
     def get_x(self, x: str):
-        if debug_mode:
-            print("in get coordinate X for mic")
+        print("in get coordinate X for mic")
         m_ind = self.mics_box.currentIndex()
         if x == "":
             x = 0
@@ -1906,8 +1550,7 @@ class MicrophoneWindow(QWidget):
         self.buffer['microphones'][m_id]['parameters']['x'] = int(x)
 
     def get_y(self, y: str):
-        if debug_mode:
-            print("in get coordinate y for mic")
+        print("in get coordinate y for mic")
         m_ind = self.mics_box.currentIndex()
         if y == "":
             y = 0
@@ -1916,8 +1559,7 @@ class MicrophoneWindow(QWidget):
         self.buffer['microphones'][m_id]['parameters']['y'] = int(y)
 
     def get_z(self, z: str):
-        if debug_mode:
-            print("in get coordinate z for mic")
+        print("in get coordinate z for mic")
         m_ind = self.mics_box.currentIndex()
         if z == "":
             z = 0
@@ -1926,29 +1568,24 @@ class MicrophoneWindow(QWidget):
         self.buffer['microphones'][m_id]['parameters']['z'] = int(z)
 
     def get_mic_name(self, new_name: str):
-        if debug_mode:
-            print('in get_mic_name')
+        print('in get_mic_name')
         m_ind = self.mics_box.currentIndex()
         m_id = self.buffer['ID'][m_ind]
         self.buffer['microphones'][m_id]['name'] = new_name
 
     def get_mic_filepath(self, new_filepath: str):
-        if debug_mode:
-            print('in get_mic_filepath')
+        print('in get_mic_filepath')
         m_ind = self.mics_box.currentIndex()
         m_id = self.buffer['ID'][m_ind]
 
         self.buffer['microphones'][m_id]['filepath'] = new_filepath
 
     def remove_mic_action(self):
-        if debug_mode:
-            print('in remove_mic_action()')
+        print('in remove_mic_action()')
         m_ind = self.mics_box.currentIndex()
-        if debug_mode:
-            print('index -', m_ind)
+        print('index -', m_ind)
         m_id = self.buffer['ID'][m_ind]
-        if debug_mode:
-            print('id -', m_id)
+        print('id -', m_id)
 
         if self.remove_label.text() == 'Remove':
             self.remove_label.setText('Removed')
@@ -1957,48 +1594,43 @@ class MicrophoneWindow(QWidget):
             self.remove_label.setText('Remove')
             self.removed_mics.remove(m_id)
 
-        if debug_mode:
-            print(" removed_mics- ", self.removed_mics)
+        print(" removed_mics- ", self.removed_mics)
 
     def remove_mics_from_buffer(self, buffer=None):
-        if debug_mode:
-            print("in remove_mics_from_buffer func ")
+        print("in remove_mics_from_buffer func ")
         if buffer is None:
             buffer = self.buffer
         if len(self.removed_mics) != 0:
             for j in range(len(self.removed_mics)):
                 m_id = self.removed_mics[j]
                 m_ind = buffer['ID'].index(m_id)
-                if debug_mode:
-                    print('removed', self.mics[m_ind], 'from buffer')
+                print('removed', self.mics[m_ind], 'from buffer')
                 buffer['ID'].remove(m_id)
                 del buffer['microphones'][m_id]
                 buffer['count'] = len(buffer['ID'])
-                if debug_mode:
-                    print(len(self.mics))
+                print(len(self.mics))
                 if len(self.mics) >= 3:
                     if m_ind == len(self.mics) - 2:
                         self.mics_box.setCurrentIndex(m_ind - 1)
                         del self.mics[m_ind]
                         self.mics_box.removeItem(m_ind)
+                        del self.removed_mics[j]
                     else:
+                        del self.removed_mics[j]
                         del self.mics[m_ind]
                         self.mics_box.removeItem(m_ind)
                 else:
                     del self.mics[m_ind]
-                    if debug_mode:
-                        print('removed mic in index', m_ind, 'from mics')
+                    print('removed mic in index', m_ind, 'from mics')
                     self.mics_box.removeItem(m_ind)
                     self.mics_box.setCurrentIndex(m_ind)
-            self.removed_mics.clear()
+                    del self.removed_mics[j]
 
-        if debug_mode:
-            print('buffer ids will be - ', buffer['ID'])
-            print('buffer mics will be - ', buffer['microphones'])
+        print('buffer ids will be - ', buffer['ID'])
+        print('buffer mics will be - ', buffer['microphones'])
 
     def add_new_microphone(self, new_mic_name: str, new_mic_id: int):
-        if debug_mode:
-            print('in add_new_microphone()')
+        print('in add_new_microphone()')
 
         self.buffer['ID'].append(new_mic_id)
         self.buffer['count'] = len(self.buffer['ID'])
@@ -2019,14 +1651,13 @@ class MicrophoneWindow(QWidget):
         self.mics_box.setCurrentIndex(index)
 
     def mic_selected_add(self, current_ind: int, data=None):
-        if debug_mode:
-            print('in mic_selected_add func')
+        print('in mic_selected_add func')
         if data == None:
             data = self.buffer
         if current_ind > 0:
-            prev_mic_ind = int(self.mics[current_ind - 1][10:])  #the index, that is wrote after Microphone, eg.Microphone3
-            if debug_mode:
-                print(prev_mic_ind)
+            prev_mic_ind = int(
+                self.mics[current_ind - 1][10:])  # the index, that is wrote after Microphone, eg.Microphone3
+            print(prev_mic_ind)
             new_mic_index = prev_mic_ind + 1
         else:
             new_mic_index = current_ind + 1
@@ -2038,20 +1669,17 @@ class MicrophoneWindow(QWidget):
         self.mics.insert(current_ind, new_mic_name)
         self.mics_box.insertItem(current_ind, new_mic_name)
         self.mics_box.setCurrentIndex(current_ind)
-        if debug_mode:
-            print('added mic ', self.mics)
+        print('added mic ', self.mics)
 
     def mic_selected(self, m: str, d=None):
-        if debug_mode:
-            print('current text changed signal - mic_selected func')
+        print('current text changed signal - mic_selected func')
         if d == None:
             d = self.buffer
         if m != 'Add Microphone':
             self.filling_entries(m=m, data=d)
         else:
             current_ind = d['count']
-            if debug_mode:
-                print(' current_ind ', current_ind)
+            print(' current_ind ', current_ind)
             self.mic_selected_add(current_ind=current_ind, data=d)
 
     def change_mute_state(self, ):
@@ -2085,28 +1713,12 @@ class MicrophoneWindow(QWidget):
 
     # push values to buffer / is connected to apply button
     def refresh_parameters(self):
-        if debug_mode:
-            print('in apply button function')
+        print('in apply button function')
         if len(self.removed_mics) == len(self.mics) - 1:
             self.remove_mics_from_buffer()
             self.tocontinue = False
         else:
             self.remove_mics_from_buffer()
-            for i in range(len(self.mics)-1):
-                m_id = self.buffer['ID'][i]
-                print('m_id', m_id)
-
-                p = self.buffer['microphones'][m_id]['filepath']
-                try:
-                    if not path.exists(path.dirname(p)):
-                        if debug_mode:
-                            print('makedir path')
-                        os.makedirs(path.dirname(p))
-                except OSError:
-                    if debug_mode:
-                        print('not valid pathname')
-                    self.buffer['microphones'][m_id]['filepath'] = self.path + self.buffer['microphones'][m_id][
-                        'name'] + ".wav"
 
             with open('buffer_data.yaml') as f:
                 d = yaml.load(f, Loader=FullLoader)
@@ -2119,17 +1731,16 @@ class MicrophoneWindow(QWidget):
                 self.parent.update_(file='buffer_data.yaml')
 
 
-class SpaceWindow(QWidget):
+class RoomWindow(QWidget):
     def __init__(self, parent=None, filename='Data.yaml'):
-        super(SpaceWindow, self).__init__()
-        self.setWindowTitle("Simulation Space")
+        super(RoomWindow, self).__init__()
+        self.setWindowTitle("Room")
         self.setGeometry(150, 80, 350, 400)
         self.parent = parent
 
         with open('buffer_data.yaml') as f:
             self.data = yaml.load(f, Loader=FullLoader)
-        self.materials = self.data['Material values']
-        self.space_configs = self.data['Simulation_Space']
+        self.room_configs = self.data['Room']
 
         # main layout
         layout = QVBoxLayout()
@@ -2162,12 +1773,9 @@ class SpaceWindow(QWidget):
 
         # combobox of materials for walls and floor to select
         self.walls = QComboBox()
-        self.walls.setEditable(True)
+        self.walls.setEditable(False)
         self.floor = QComboBox()
-        self.floor.setEditable(True)
-
-        #self.walls.addItems(self.materials)
-        #self.floor.addItems(self.materials)
+        self.floor.setEditable(False)
 
         layout1.addWidget(QLabel("Surface materials"), 7, 0)
         layout1.addWidget(QLabel("Walls"), 8, 0)
@@ -2209,73 +1817,63 @@ class SpaceWindow(QWidget):
 
     # initialzing widgets with data values
     def initialize_entries(self):
-        self.walls.addItems(self.materials)
-        self.floor.addItems(self.materials)
+        self.walls.addItems(self.data['Material values'])
+        self.floor.addItems(self.data['Material values'])
 
-        self.walls.setCurrentIndex(self.space_configs['walls'])
-        self.floor.setCurrentIndex(self.space_configs['floor'])
-        self.length_lineedit.setText(str(self.space_configs['length']))
-        self.width_lineedit.setText(str(self.space_configs['width']))
-        self.height_lineedit.setText(str(self.space_configs['height']))
-        self.temp_lineedit.setText(str(self.space_configs['temperature']))
-        self.humadity_lineedit.setText(str(self.space_configs['humadity']))
+        self.walls.setCurrentIndex(self.room_configs['walls'])
+        self.floor.setCurrentIndex(self.room_configs['floor'])
+        self.length_lineedit.setText(str(self.room_configs['length']))
+        self.width_lineedit.setText(str(self.room_configs['width']))
+        self.height_lineedit.setText(str(self.room_configs['height']))
+        self.temp_lineedit.setText(str(self.room_configs['temperature']))
+        self.humadity_lineedit.setText(str(self.room_configs['humadity']))
 
     # methods connected with appropriate widgets
     # this one for room length input
     def change_length(self, l):
-        self.space_configs['length'] = int(l)
+        self.room_configs['length'] = int(l)
 
     def change_width(self, w):
-        self.space_configs['width'] = int(w)
+        self.room_configs['width'] = int(w)
 
     def change_height(self, h):
-        self.space_configs['height'] = int(h)
+        self.room_configs['height'] = int(h)
 
     def change_temperature(self, t):
-        self.space_configs['temperature'] = int(t)
+        self.room_configs['temperature'] = int(t)
 
     def change_humadity(self, h):
-        self.space_configs['humadity'] = int(h)
+        self.room_configs['humadity'] = int(h)
 
     # methods connected with walls and floor comboboxes, to select material
-    def wall_material_changed(self, material_wall: str):
-        if debug_mode:
-            print('in wall_material_changed')
-            print('material_wall', material_wall)
-            print('ind', self.materials.index(material_wall))
-        ind = self.materials.index(material_wall)
-        self.space_configs['walls'] = ind
-
-        """""
+    def wall_material_changed(self, material_ind):
         self.walls.setCurrentIndex(self.data['Material values'].index(material_ind))
-        self.space_configs['walls'] = self.data['Material values'].index(material_ind)
-        """""
+        self.room_configs['walls'] = self.data['Material values'].index(material_ind)
 
-    def floor_material_changed(self, material_floor: str):
-        self.space_configs['floor'] = self.materials.index(material_floor)
+    def floor_material_changed(self, material_ind):
+        self.floor.setCurrentIndex(self.data['Material values'].index(material_ind))
+        self.room_configs['Room']['floor'] = self.data['Material values'].index(material_ind)
 
     # send values to data and hide window/ connected to okbuttond
     def push_parameters_to_data_and_destroy(self):
         self.refresh_parameters()
         with open('Data.yaml') as f:
             d = yaml.load(f, Loader=FullLoader)
-        d['Simulation_Space'] = self.space_configs
+        d['Room'] = self.room_configs
         with open('Data.yaml', 'w') as f:
             yaml.dump(d, f)
 
         self.hide()
 
     def refresh_parameters(self):
-        if debug_mode:
-            print('in refresh_parameters')
         with open('buffer_data.yaml') as f:
             d = yaml.load(f, Loader=FullLoader)
-        d['Simulation_Space'] = self.space_configs
+            d['Room'] = self.room_configs
         with open('buffer_data.yaml', 'w') as f:
             yaml.dump(d, f, sort_keys=False, indent=4)
 
         if self.parent:
-            self.parent.update_(file='buffer_data.yaml')
+            self.parent.update_()
 
 
 class SimulationParametersWindow(QWidget):
@@ -2394,4 +1992,3 @@ if __name__ == "__main__":
     app = QApplication(sys.argv)
     window = MainWindow()
     window.show()
-    sys.exit(app.exec_())

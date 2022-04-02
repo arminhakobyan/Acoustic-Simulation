@@ -298,5 +298,3 @@ class Parser_from_yaml_to_py:
 """""
 
 
-
-

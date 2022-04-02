@@ -2,6 +2,8 @@ import numpy as np
 import scipy.signal
 import matplotlib.pyplot as plt
 import math
+from scipy.io.wavfile import write
+from Sim_room_classes import *
 
 """""
 This file is created by Armine for wellbeing of our cute coorporation: 
@@ -99,3 +101,139 @@ def create_sinewave(fs=0, duration=0, F_params=[]):
 
     print('sinwave-', sinewave)
     return sinewave
+
+
+"""""
+play_pause: int
+stop: int
+
+def player(s: soundsource):
+    samples = 1024  #count samples of each chunk
+
+    # length_n - samples
+    write("audio.wav", s.fs, s.audio.astype(np.int16))
+    file_name = wave.open("audio.wav", 'rb')
+
+    duration = int(len(s.audio) / s.fs)  # duration of an audio
+    time_array = np.arange(0, duration, duration / len(s.audio))
+
+    fft_points = int(len(s.audio) / 1024)
+    # doing fft
+    power_spectrum, frequencies_found, t, image_axis = plt.specgram(s.audio, Fs=s.fs,
+                                                                    mode='magnitude',
+                                                                    noverlap=0,
+                                                                    NFFT=fft_points,
+                                                                    xextent=(0, np.max(time_array)))
+    powers = np.transpose(power_spectrum)
+
+    global play_pause
+    global stop
+    py_audio = pyaudio.PyAudio()
+    stream = py_audio.open(format=py_audio.get_format_from_width(file_name.getsampwidth()),
+                           channels=file_name.getnchannels(),
+                           rate=file_name.getframerate(),
+                           output=True)
+    i = 0
+    while i < len(s.audio) - samples:
+        if stop == 1:
+            i = 0
+        while play_pause == 0:
+            time.sleep(1)
+        file_name.setpos(i)
+        frames = file_name.readframes(samples)
+        stream.write(frames)
+        minute_second = time_array[i]
+        power = powers[i]
+        frequency = frequencies_found
+        # return minute_second
+        i += samples
+
+    stream.close()
+    py_audio.terminate()
+    file_name.close()
+#---------------------------------------------------------------
+
+play_pause = 1
+stop = 0
+power = []
+powers = np.transpose(power_spectrum)
+powers = list(powers)
+frequencies_found = list(frequencies_found)
+
+plt.ion()
+fig = plt.figure()
+ax = fig.add_subplot(111)
+x = frequencies_found
+y = powers[0]
+ax.set_ylim([0, 10000])
+line1, = ax.plot(x, y, 'c-')
+
+
+def player(filename=filename, n=34, new_fs=32000):
+    sound_array, fs = read_wav(filename, mmap=False)
+    audio = resamplingAudio(list(sound_array), fs, new_fs)
+    write("audio.wav", new_fs, audio.astype(np.int16))
+
+    file_name = wave.open("audio.wav", 'rb')
+    length_n = int(len(audio) / n)  # length of each part of a divided audio
+    duration = int(len(audio) / new_fs)  # duration of an audio
+    time_array = np.arange(0, duration, duration / len(audio))
+
+    #  doing fft
+    global frequencies_found
+    global power_spectrum
+    global powers
+
+    power_spectrum, frequencies_found, _, _ = plt.specgram(audio, Fs=new_fs,
+                                                           mode='magnitude',
+                                                           noverlap=0,
+                                                           NFFT=1024,
+                                                           xextent=(0, np.max(time_array)))
+    powers = np.transpose(power_spectrum)
+
+    global play_pause
+    global stop
+    py_audio = pyaudio.PyAudio()
+    stream = py_audio.open(format=py_audio.get_format_from_width(file_name.getsampwidth()),
+                           channels=file_name.getnchannels(),
+                           rate=file_name.getframerate(),
+                           output=True)
+
+    i = 0
+    max_value_of_each_spec = []
+    for i in range(len(powers)):
+        max_value_of_each_spec.append(max(powers[i]))
+        max_of_all_spec = max(max_value_of_each_spec)
+    while i < len(audio) - length_n:
+        if stop == 1:
+            i = 0
+        while play_pause == 0:
+            time.sleep(1)
+        if play_pause == 1:
+            stop = 0
+        global power
+        power = []
+        for j in range(int(i / 1024), int((i + length_n) / 1024)):
+            power.append(powers[j])
+        file_name.setpos(i)
+        # FFT of the frame, write to global variable
+        frames = file_name.readframes(length_n)
+        stream.write(frames)
+        audio = list(audio)
+        for k in range(10):
+            line1.set_ydata(power[k])
+            fig.canvas.draw()
+            fig.canvas.flush_events()
+            k += length_n
+        # minute_second = time_array[i]
+        # power = powers[i]
+        # frequency = frequencies_found
+        # return minute_second
+
+        i += length_n
+
+    stream.close()
+    py_audio.terminate()
+    file_name.close()
+    
+"""""
